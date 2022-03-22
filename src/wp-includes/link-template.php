@@ -1959,9 +1959,11 @@ function get_adjacent_post( $in_same_term = false, $excluded_terms = '', $previo
 	 */
 	$sort = apply_filters( "get_{$adjacent}_post_sort", "ORDER BY p.post_date $order LIMIT 1", $post, $order );
 
-	$query     = "SELECT p.ID FROM $wpdb->posts AS p $join $where $sort";
-	$query_key = 'adjacent_post_' . md5( $query );
-	$result    = wp_cache_get( $query_key, 'counts' );
+	$query        = "SELECT p.ID FROM $wpdb->posts AS p $join $where $sort";
+	$last_changed = wp_cache_get_last_changed( 'posts' );
+	$hash         = md5( $query );
+	$query_key    = "adjacent_post:$hash:$last_changed";
+	$result       = wp_cache_get( $query_key, 'posts' );
 	if ( false !== $result ) {
 		if ( $result ) {
 			$result = get_post( $result );
@@ -1974,7 +1976,7 @@ function get_adjacent_post( $in_same_term = false, $excluded_terms = '', $previo
 		$result = '';
 	}
 
-	wp_cache_set( $query_key, $result, 'counts' );
+	wp_cache_set( $query_key, $result, 'posts' );
 
 	if ( $result ) {
 		$result = get_post( $result );
