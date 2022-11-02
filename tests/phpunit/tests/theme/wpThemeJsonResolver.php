@@ -117,7 +117,7 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 		unset( $GLOBALS['wp_themes'] );
 
 		// Reset data between tests.
-		WP_Theme_JSON_Resolver::clean_cached_data();
+		wp_theme_clean_theme_json_cached_data();
 		parent::tear_down();
 	}
 
@@ -390,7 +390,7 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 	 * @ticket 56467
 	 */
 	public function test_get_core_data( $should_fire_filter, $core_is_cached, $blocks_are_cached ) {
-		WP_Theme_JSON_Resolver::clean_cached_data();
+		wp_theme_clean_theme_json_cached_data();
 
 		// If should cache core, then fire the method to cache it before running the tests.
 		if ( $core_is_cached ) {
@@ -451,11 +451,11 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 	public function test_switching_themes_recalculates_data() {
 		// The "default" theme doesn't have theme.json support.
 		switch_theme( 'default' );
-		$default = wp_theme_has_theme_json();
+		$default = WP_Theme_JSON_Resolver::theme_has_support();
 
 		// Switch to a theme that does have support.
 		switch_theme( 'block-theme' );
-		$has_theme_json_support = wp_theme_has_theme_json();
+		$has_theme_json_support = WP_Theme_JSON_Resolver::theme_has_support();
 
 		$this->assertFalse( $default );
 		$this->assertTrue( $has_theme_json_support );
@@ -491,7 +491,7 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 		remove_theme_support( 'custom-line-height' );
 		remove_theme_support( 'editor-color-palette' );
 
-		$this->assertFalse( wp_theme_has_theme_json() );
+		$this->assertFalse( WP_Theme_JSON_Resolver::theme_has_support() );
 		$this->assertTrue( $settings['typography']['lineHeight'] );
 		$this->assertSame( $color_palette, $settings['color']['palette']['theme'] );
 	}
@@ -641,7 +641,7 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 		$query_count = count( $this->queries );
 		for ( $i = 0; $i < 3; $i++ ) {
 			WP_Theme_JSON_Resolver::get_user_data_from_wp_global_styles( $theme );
-			WP_Theme_JSON_Resolver::clean_cached_data();
+			wp_theme_clean_theme_json_cached_data();
 		}
 		$query_count = count( $this->queries ) - $query_count;
 		$this->assertSame( 0, $query_count, 'Unexpected SQL queries detected for the wp_global_style post type prior to creation.' );
@@ -655,7 +655,7 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 		$query_count = count( $this->queries );
 		for ( $i = 0; $i < 3; $i ++ ) {
 			$new_user_cpt = WP_Theme_JSON_Resolver::get_user_data_from_wp_global_styles( $theme );
-			WP_Theme_JSON_Resolver::clean_cached_data();
+			wp_theme_clean_theme_json_cached_data();
 			$this->assertSameSets( $user_cpt, $new_user_cpt, "User CPTs do not match on run {$i}." );
 		}
 		$query_count = count( $this->queries ) - $query_count;
@@ -672,7 +672,7 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 		$query_count = count( $this->queries );
 		for ( $i = 0; $i < 3; $i++ ) {
 			WP_Theme_JSON_Resolver::get_user_data_from_wp_global_styles( $theme );
-			WP_Theme_JSON_Resolver::clean_cached_data();
+			wp_theme_clean_theme_json_cached_data();
 		}
 		$query_count = count( $this->queries ) - $query_count;
 		$this->assertSame( 0, $query_count, 'Unexpected SQL queries detected for the wp_global_style post type prior to creation.' );

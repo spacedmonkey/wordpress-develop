@@ -284,3 +284,11 @@ function wp_theme_has_theme_json( $clear_cache = false ) {
 
 	return $theme_has_support;
 }
+
+/**
+ * Clean theme.json related cached data.
+ */
+function wp_theme_clean_theme_json_cached_data() {
+	wp_theme_has_theme_json( true );
+	WP_Theme_JSON_Resolver::clean_cached_data();
+}
