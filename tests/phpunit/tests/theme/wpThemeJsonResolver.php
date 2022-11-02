@@ -451,11 +451,11 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 	public function test_switching_themes_recalculates_data() {
 		// The "default" theme doesn't have theme.json support.
 		switch_theme( 'default' );
-		$default = WP_Theme_JSON_Resolver::theme_has_support();
+		$default = wp_theme_has_theme_json();
 
 		// Switch to a theme that does have support.
 		switch_theme( 'block-theme' );
-		$has_theme_json_support = WP_Theme_JSON_Resolver::theme_has_support();
+		$has_theme_json_support = wp_theme_has_theme_json();
 
 		$this->assertFalse( $default );
 		$this->assertTrue( $has_theme_json_support );
@@ -491,7 +491,7 @@ class Tests_Theme_wpThemeJsonResolver extends WP_UnitTestCase {
 		remove_theme_support( 'custom-line-height' );
 		remove_theme_support( 'editor-color-palette' );
 
-		$this->assertFalse( WP_Theme_JSON_Resolver::theme_has_support() );
+		$this->assertFalse( wp_theme_has_theme_json() );
 		$this->assertTrue( $settings['typography']['lineHeight'] );
 		$this->assertSame( $color_palette, $settings['color']['palette']['theme'] );
 	}
