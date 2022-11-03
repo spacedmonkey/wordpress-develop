@@ -259,6 +259,8 @@ function wp_add_global_styles_for_blocks() {
 /**
  * Whether a theme or its parent have a theme.json file.
  *
+ * @since 6.2.0
+ *
  * @param boolean $clear_cache Whether the cache should be cleared and theme support recomputed. Default is false.
  *
  * @return boolean
@@ -287,6 +289,9 @@ function wp_theme_has_theme_json( $clear_cache = false ) {
 
 /**
  * Clean theme.json related cached data.
+ *
+ * @since 6.2.0
+ *
  */
 function wp_theme_clean_theme_json_cached_data() {
 	wp_theme_has_theme_json( true );
