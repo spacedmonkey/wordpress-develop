@@ -261,18 +261,13 @@ function wp_add_global_styles_for_blocks() {
  *
  * @since 6.2.0
  *
- * @param boolean $clear_cache Whether the cache should be cleared and theme support recomputed. Default is false.
- *
  * @return boolean
  */
-function wp_theme_has_theme_json( $clear_cache = false ) {
-	static $theme_has_support = null;
-
-	if ( true === $clear_cache ) {
-		$theme_has_support = null;
-	}
-
-	if ( null !== $theme_has_support ) {
+function wp_theme_has_theme_json() {
+	$cache_key         = 'theme_has_support';
+	$cache_found       = false;
+	$theme_has_support = wp_cache_get( $cache_key, '', false, $cache_found );
+	if ( $cache_found ) {
 		return $theme_has_support;
 	}
 
@@ -284,6 +279,8 @@ function wp_theme_has_theme_json( $clear_cache = false ) {
 		$theme_has_support = is_readable( get_template_directory() . '/theme.json' );
 	}
 
+	wp_cache_set( $cache_key, $theme_has_support );
+
 	return $theme_has_support;
 }
 
@@ -294,6 +291,6 @@ function wp_theme_has_theme_json( $clear_cache = false ) {
  *
  */
 function wp_theme_clean_theme_json_cached_data() {
-	wp_theme_has_theme_json( true );
+	wp_cache_delete( 'theme_has_support' );
 	WP_Theme_JSON_Resolver::clean_cached_data();
 }
