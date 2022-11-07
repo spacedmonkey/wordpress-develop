@@ -301,10 +301,21 @@ function form_option( $option ) {
 function wp_load_alloptions( $force_cache = false ) {
 	global $wpdb;
 
+	$alloptions = false;
 	if ( ! wp_installing() || ! is_multisite() ) {
-		$alloptions = wp_cache_get( 'alloptions', 'options', $force_cache );
-	} else {
-		$alloptions = false;
+		if ( wp_using_ext_object_cache() && wp_cache_supports( 'get_multiple' ) ) {
+			$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options', $force_cache );
+			if ( $alloptions_keys ) {
+				$alloptions = wp_cache_get_multiple( $alloptions_keys, 'options' );
+				$alloptions = array_filter( $alloptions );
+
+				if( $alloptions ){
+					return apply_filters( 'alloptions', array() );
+				}
+			}
+		} else {
+			$alloptions = wp_cache_get( 'alloptions', 'options', $force_cache );
+		}
 	}
 
 	if ( ! $alloptions ) {
@@ -329,11 +340,15 @@ function wp_load_alloptions( $force_cache = false ) {
 			 * @param array $alloptions Array with all options.
 			 */
 			$alloptions = apply_filters( 'pre_cache_alloptions', $alloptions );
-
-			wp_cache_add( 'alloptions', $alloptions, 'options' );
+			if ( wp_using_ext_object_cache() && wp_cache_supports( 'get_multiple' ) ) {
+				wp_cache_set_multiple( $alloptions, 'options' );
+				wp_cache_add( 'alloptions_keys', array_keys( $alloptions ), 'options' );
+				$alloptions = array();
+			} else {
+				wp_cache_add( 'alloptions', $alloptions, 'options' );
+			}
 		}
 	}
-
 	/**
 	 * Filters all options after retrieving them.
 	 *
@@ -531,7 +546,12 @@ function update_option( $option, $value, $autoload = null ) {
 
 	if ( ! wp_installing() ) {
 		$alloptions = wp_load_alloptions( true );
-		if ( isset( $alloptions[ $option ] ) ) {
+		if ( wp_using_ext_object_cache() && wp_cache_supports( 'get_multiple' ) ) {
+			$alloptions_keys   = wp_cache_get( 'alloptions_keys', 'options' );
+			$alloptions_keys[] = $option;
+			wp_cache_set( 'alloptions_keys', array_unique( $alloptions_keys ), 'options' );
+			wp_cache_set( $option, $serialized_value, 'options' );
+		} else if ( isset( $alloptions[ $option ] ) ) {
 			$alloptions[ $option ] = $serialized_value;
 			wp_cache_set( 'alloptions', $alloptions, 'options' );
 		} else {
@@ -669,8 +689,16 @@ function add_option( $option, $value = '', $deprecated = '', $autoload = 'yes' )
 	if ( ! wp_installing() ) {
 		if ( 'yes' === $autoload ) {
 			$alloptions            = wp_load_alloptions( true );
-			$alloptions[ $option ] = $serialized_value;
-			wp_cache_set( 'alloptions', $alloptions, 'options' );
+			if ( wp_using_ext_object_cache() && wp_cache_supports( 'get_multiple' ) ) {
+				$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+				$alloptions_keys[] = $option;
+				wp_cache_set('alloptions_keys', $alloptions_keys, 'options' );
+				wp_cache_set( $option, $serialized_value, 'options' );
+			} else {
+				$alloptions[ $option ] = $serialized_value;
+				wp_cache_set( 'alloptions', $alloptions, 'options' );
+			}
+
 		} else {
 			wp_cache_set( $option, $serialized_value, 'options' );
 		}
@@ -753,7 +781,12 @@ function delete_option( $option ) {
 	if ( ! wp_installing() ) {
 		if ( 'yes' === $row->autoload ) {
 			$alloptions = wp_load_alloptions( true );
-			if ( is_array( $alloptions ) && isset( $alloptions[ $option ] ) ) {
+			if ( wp_using_ext_object_cache() && wp_cache_supports( 'get_multiple' ) ) {
+				$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+				unset( $alloptions_keys[ $option ] );
+				wp_cache_set('alloptions_keys', $alloptions_keys, 'options' );
+				wp_cache_delete( $option, 'options' );
+			} else if ( is_array( $alloptions ) && isset( $alloptions[ $option ] ) ) {
 				unset( $alloptions[ $option ] );
 				wp_cache_set( 'alloptions', $alloptions, 'options' );
 			}
@@ -877,10 +910,9 @@ function get_transient( $transient ) {
 		$value = wp_cache_get( $transient, 'transient' );
 	} else {
 		$transient_option = '_transient_' . $transient;
-		if ( ! wp_installing() ) {
-			// If option is not in alloptions, it is not autoloaded and thus has a timeout.
-			$alloptions = wp_load_alloptions();
-			if ( ! isset( $alloptions[ $transient_option ] ) ) {
+		if ( ! wp_installing()  ) {
+			$value = get_option( $transient_option );
+			if ( $value ) {
 				$transient_timeout = '_transient_timeout_' . $transient;
 				$timeout           = get_option( $transient_timeout );
 				if ( false !== $timeout && $timeout < time() ) {
