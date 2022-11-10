@@ -1505,6 +1505,10 @@ final class WP_Theme implements ArrayAccess {
 		return false;
 	}
 
+	public function supports_theme_json(){
+		return is_readable( $this->get_file_path( 'theme.json' ) );
+	}
+
 	/**
 	 * Retrieves the path of a file in the theme.
 	 *

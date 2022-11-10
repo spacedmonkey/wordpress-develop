@@ -243,13 +243,13 @@ class WP_Theme_JSON_Resolver {
 			_deprecated_argument( __METHOD__, '5.9.0' );
 		}
 
-		$options = wp_parse_args( $options, array( 'with_supports' => true ) );
-
+		$options  = wp_parse_args( $options, array( 'with_supports' => true ) );
+		$wp_theme = wp_get_theme();
 		if ( null === static::$theme || ! static::has_same_registered_blocks( 'theme' ) ) {
-			$theme_json_file = static::get_file_path_from_theme( 'theme.json' );
+			$theme_json_file = $wp_theme->get_file_path( 'theme.json' );
 			if ( '' !== $theme_json_file ) {
 				$theme_json_data = static::read_json_file( $theme_json_file );
-				$theme_json_data = static::translate( $theme_json_data, wp_get_theme()->get( 'TextDomain' ) );
+				$theme_json_data = static::translate( $theme_json_data, $wp_theme->get( 'TextDomain' ) );
 			} else {
 				$theme_json_data = array();
 			}
@@ -265,12 +265,12 @@ class WP_Theme_JSON_Resolver {
 			$theme_json_data = $theme_json->get_data();
 			static::$theme   = new WP_Theme_JSON( $theme_json_data );
 
-			if ( wp_get_theme()->parent() ) {
+			if ( $wp_theme->parent() ) {
 				// Get parent theme.json.
-				$parent_theme_json_file = static::get_file_path_from_theme( 'theme.json', true );
+				$parent_theme_json_file = $wp_theme->parent()->get_file_path( 'theme.json' );
 				if ( '' !== $parent_theme_json_file ) {
 					$parent_theme_json_data = static::read_json_file( $parent_theme_json_file );
-					$parent_theme_json_data = static::translate( $parent_theme_json_data, wp_get_theme()->parent()->get( 'TextDomain' ) );
+					$parent_theme_json_data = static::translate( $parent_theme_json_data, $wp_theme->parent()->get( 'TextDomain' ) );
 					$parent_theme           = new WP_Theme_JSON( $parent_theme_json_data );
 
 					/*
@@ -294,7 +294,7 @@ class WP_Theme_JSON_Resolver {
 		 * and merge the static::$theme upon that.
 		 */
 		$theme_support_data = WP_Theme_JSON::get_from_editor_settings( get_default_block_editor_settings() );
-		if ( ! static::theme_has_support() ) {
+		if ( ! $wp_theme->supports_theme_json() ) {
 			if ( ! isset( $theme_support_data['settings']['color'] ) ) {
 				$theme_support_data['settings']['color'] = array();
 			}
@@ -412,9 +412,7 @@ class WP_Theme_JSON_Resolver {
 			$theme = wp_get_theme();
 		}
 
-		// Bail early if the theme does not support a theme.json. Since WP_Theme_JSON_Resolver::theme_has_support()
-		// only supports the active theme, the extra condition for whether $theme is the active theme is present here.
-		if ( $theme->get_stylesheet() === get_stylesheet() && ! static::theme_has_support() ) {
+		if ( ! $theme->supports_theme_json() ) {
 			return array();
 		}
 
@@ -596,10 +594,7 @@ class WP_Theme_JSON_Resolver {
 	 */
 	public static function theme_has_support() {
 		if ( ! isset( static::$theme_has_support ) ) {
-			static::$theme_has_support = (
-				static::get_file_path_from_theme( 'theme.json' ) !== '' ||
-				static::get_file_path_from_theme( 'theme.json', true ) !== ''
-			);
+			static::$theme_has_support = wp_get_theme()->supports_theme_json();
 		}
 
 		return static::$theme_has_support;
