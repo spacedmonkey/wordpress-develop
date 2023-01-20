@@ -173,7 +173,7 @@ function wp_get_global_stylesheet( $types = array() ) {
 function wp_get_global_styles_svg_filters() {
 	// Return cached value if it can be used and exists.
 	// It's cached by theme to make sure that theme switching clears the cache.
-	$can_use_cached = ! WP_DEBUG;
+	$can_use_cached = ! WP_DEBUG && ! is_admin();
 	$cache_group    = 'theme_json';
 	$cache_key      = 'global_styles_svg_filters';
 	if ( $can_use_cached ) {
