@@ -175,7 +175,7 @@ function wp_get_global_styles_svg_filters() {
 	// It's cached by theme to make sure that theme switching clears the cache.
 	$can_use_cached = ! WP_DEBUG && ! is_admin();
 	$cache_group    = 'theme_json';
-	$cache_key      = 'global_styles_svg_filters';
+	$cache_key      = 'wp_get_global_styles_svg_filters';
 	if ( $can_use_cached ) {
 		$cached = wp_cache_get( $cache_key, $cache_group );
 		if ( $cached ) {
@@ -262,6 +262,6 @@ function wp_add_global_styles_for_blocks() {
  */
 function _wp_clean_theme_json_caches() {
 	wp_cache_delete( 'wp_get_global_stylesheet', 'theme_json' );
-	wp_cache_delete( 'global_styles_svg_filters', 'theme_json' );
+	wp_cache_delete( 'wp_get_global_styles_svg_filters', 'theme_json' );
 	WP_Theme_JSON_Resolver::clean_cached_data();
 }
