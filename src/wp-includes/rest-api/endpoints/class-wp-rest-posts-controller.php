@@ -226,9 +226,15 @@ class WP_REST_Posts_Controller extends WP_REST_Controller {
 			);
 		}
 
+		$fields = $this->get_fields_for_response($request);
+		$load_thumbnails = rest_is_field_included('featured_media', $fields) || rest_is_field_included('_links', $fields) || rest_is_field_included('_embedded', $fields);
+		$load_meta       = rest_is_field_included('meta', $fields);
+
 		// Retrieve the list of registered collection query parameters.
 		$registered = $this->get_collection_params();
-		$args       = array();
+		$args       = array(
+			'update_post_meta_cache' => $load_thumbnails | $load_meta,
+		);
 
 		/*
 		 * This array defines mappings between public API query parameters whose
@@ -373,7 +379,7 @@ class WP_REST_Posts_Controller extends WP_REST_Controller {
 		update_post_author_caches( $query_result );
 		update_post_parent_caches( $query_result );
 
-		if ( post_type_supports( $this->post_type, 'thumbnail' ) ) {
+		if ( $load_thumbnails ) {
 			update_post_thumbnail_cache( $posts_query );
 		}
 
