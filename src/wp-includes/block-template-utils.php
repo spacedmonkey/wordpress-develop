@@ -41,7 +41,7 @@ function get_block_theme_folders( $theme_stylesheet = null ) {
 	$root_dir   = get_theme_root( $theme_name );
 	$theme_dir  = "$root_dir/$theme_name";
 
-	if ( file_exists( $theme_dir . '/block-templates' ) || file_exists( $theme_dir . '/block-template-parts' ) ) {
+	if ( wp_file_exists( $theme_dir . '/block-templates' ) || wp_file_exists( $theme_dir . '/block-template-parts' ) ) {
 		return array(
 			'wp_template'      => 'block-templates',
 			'wp_template_part' => 'block-template-parts',
@@ -231,7 +231,7 @@ function _filter_block_template_part_area( $type ) {
  */
 function _get_block_templates_paths( $base_directory ) {
 	$path_list = array();
-	if ( file_exists( $base_directory ) ) {
+	if ( wp_file_exists( $base_directory ) ) {
 		$nested_files      = new RecursiveIteratorIterator( new RecursiveDirectoryIterator( $base_directory ) );
 		$nested_html_files = new RegexIterator( $nested_files, '/^.+\.html$/i', RecursiveRegexIterator::GET_MATCH );
 		foreach ( $nested_html_files as $path => $file ) {
@@ -263,7 +263,7 @@ function _get_block_template_file( $template_type, $slug ) {
 	foreach ( $themes as $theme_slug => $theme_dir ) {
 		$template_base_paths = get_block_theme_folders( $theme_slug );
 		$file_path           = $theme_dir . '/' . $template_base_paths[ $template_type ] . '/' . $slug . '.html';
-		if ( file_exists( $file_path ) ) {
+		if ( wp_file_exists( $file_path ) ) {
 			$new_template_item = array(
 				'slug'  => $slug,
 				'path'  => $file_path,

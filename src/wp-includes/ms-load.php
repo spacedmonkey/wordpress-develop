@@ -47,7 +47,7 @@ function wp_get_active_network_plugins() {
 	foreach ( $active_plugins as $plugin ) {
 		if ( ! validate_file( $plugin )                     // $plugin must validate as file.
 			&& '.php' === substr( $plugin, -4 )             // $plugin must end with '.php'.
-			&& file_exists( WP_PLUGIN_DIR . '/' . $plugin ) // $plugin must exist.
+			&& wp_file_exists( WP_PLUGIN_DIR . '/' . $plugin ) // $plugin must exist.
 			) {
 			$plugins[] = WP_PLUGIN_DIR . '/' . $plugin;
 		}
@@ -93,7 +93,7 @@ function ms_site_check() {
 	$blog = get_site();
 
 	if ( '1' == $blog->deleted ) {
-		if ( file_exists( WP_CONTENT_DIR . '/blog-deleted.php' ) ) {
+		if ( wp_file_exists( WP_CONTENT_DIR . '/blog-deleted.php' ) ) {
 			return WP_CONTENT_DIR . '/blog-deleted.php';
 		} else {
 			wp_die( __( 'This site is no longer available.' ), '', array( 'response' => 410 ) );
@@ -101,7 +101,7 @@ function ms_site_check() {
 	}
 
 	if ( '2' == $blog->deleted ) {
-		if ( file_exists( WP_CONTENT_DIR . '/blog-inactive.php' ) ) {
+		if ( wp_file_exists( WP_CONTENT_DIR . '/blog-inactive.php' ) ) {
 			return WP_CONTENT_DIR . '/blog-inactive.php';
 		} else {
 			$admin_email = str_replace( '@', ' AT ', get_site_option( 'admin_email', 'support@' . get_network()->domain ) );
@@ -116,7 +116,7 @@ function ms_site_check() {
 	}
 
 	if ( '1' == $blog->archived || '1' == $blog->spam ) {
-		if ( file_exists( WP_CONTENT_DIR . '/blog-suspended.php' ) ) {
+		if ( wp_file_exists( WP_CONTENT_DIR . '/blog-suspended.php' ) ) {
 			return WP_CONTENT_DIR . '/blog-suspended.php';
 		} else {
 			wp_die( __( 'This site has been archived or suspended.' ), '', array( 'response' => 410 ) );

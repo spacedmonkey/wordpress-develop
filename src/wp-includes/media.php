@@ -243,7 +243,7 @@ function image_downsize( $id, $size = 'medium' ) {
 		$imagefile = get_attached_file( $id );
 		$thumbfile = str_replace( wp_basename( $imagefile ), wp_basename( $meta['thumb'] ), $imagefile );
 
-		if ( file_exists( $thumbfile ) ) {
+		if ( wp_file_exists( $thumbfile ) ) {
 			$info = wp_getimagesize( $thumbfile );
 
 			if ( $info ) {
@@ -4186,7 +4186,7 @@ function wp_prepare_attachment_for_js( $attachment ) {
 
 	if ( isset( $meta['filesize'] ) ) {
 		$bytes = $meta['filesize'];
-	} elseif ( file_exists( $attached_file ) ) {
+	} elseif ( wp_file_exists( $attached_file ) ) {
 		$bytes = wp_filesize( $attached_file );
 	} else {
 		$bytes = '';
@@ -5084,7 +5084,7 @@ function wp_maybe_generate_attachment_metadata( $attachment ) {
 	$file          = get_attached_file( $attachment_id );
 	$meta          = wp_get_attachment_metadata( $attachment_id );
 
-	if ( empty( $meta ) && file_exists( $file ) ) {
+	if ( empty( $meta ) && wp_file_exists( $file ) ) {
 		$_meta = get_post_meta( $attachment_id );
 		$_lock = 'wp_generating_att_' . $attachment_id;
 

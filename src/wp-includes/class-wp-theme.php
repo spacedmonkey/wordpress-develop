@@ -273,9 +273,9 @@ final class WP_Theme implements ArrayAccess {
 			if ( isset( $cache['theme_root_template'] ) ) {
 				$theme_root_template = $cache['theme_root_template'];
 			}
-		} elseif ( ! file_exists( $this->theme_root . '/' . $theme_file ) ) {
+		} elseif ( ! wp_file_exists( $this->theme_root . '/' . $theme_file ) ) {
 			$this->headers['Name'] = $this->stylesheet;
-			if ( ! file_exists( $this->theme_root . '/' . $this->stylesheet ) ) {
+			if ( ! wp_file_exists( $this->theme_root . '/' . $this->stylesheet ) ) {
 				$this->errors = new WP_Error(
 					'theme_not_found',
 					sprintf(
@@ -299,7 +299,7 @@ final class WP_Theme implements ArrayAccess {
 					'template'    => $this->template,
 				)
 			);
-			if ( ! file_exists( $this->theme_root ) ) { // Don't cache this one.
+			if ( ! wp_file_exists( $this->theme_root ) ) { // Don't cache this one.
 				$this->errors->add( 'theme_root_missing', __( '<strong>Error:</strong> The themes directory is either empty or does not exist. Please check your installation.' ) );
 			}
 			return;
@@ -363,9 +363,9 @@ final class WP_Theme implements ArrayAccess {
 			$theme_path     = $this->theme_root . '/' . $this->stylesheet;
 
 			if (
-				! file_exists( $theme_path . '/templates/index.html' )
-				&& ! file_exists( $theme_path . '/block-templates/index.html' ) // Deprecated path support since 5.9.0.
-				&& ! file_exists( $theme_path . '/index.php' )
+				! wp_file_exists( $theme_path . '/templates/index.html' )
+				&& ! wp_file_exists( $theme_path . '/block-templates/index.html' ) // Deprecated path support since 5.9.0.
+				&& ! wp_file_exists( $theme_path . '/index.php' )
 			) {
 				$error_message = sprintf(
 					/* translators: 1: templates/index.html, 2: index.php, 3: Documentation URL, 4: Template, 5: style.css */
@@ -392,13 +392,13 @@ final class WP_Theme implements ArrayAccess {
 		}
 
 		// If we got our data from cache, we can assume that 'template' is pointing to the right place.
-		if ( ! is_array( $cache ) && $this->template != $this->stylesheet && ! file_exists( $this->theme_root . '/' . $this->template . '/index.php' ) ) {
+		if ( ! is_array( $cache ) && $this->template != $this->stylesheet && ! wp_file_exists( $this->theme_root . '/' . $this->template . '/index.php' ) ) {
 			// If we're in a directory of themes inside /themes, look for the parent nearby.
 			// wp-content/themes/directory-of-themes/*
 			$parent_dir  = dirname( $this->stylesheet );
 			$directories = search_theme_directories();
 
-			if ( '.' !== $parent_dir && file_exists( $this->theme_root . '/' . $parent_dir . '/' . $this->template . '/index.php' ) ) {
+			if ( '.' !== $parent_dir && wp_file_exists( $this->theme_root . '/' . $parent_dir . '/' . $this->template . '/index.php' ) ) {
 				$this->template = $parent_dir . '/' . $this->template;
 			} elseif ( $directories && isset( $directories[ $this->template ] ) ) {
 				// Look for the template in the search_theme_directories() results, in case it is in another theme root.
@@ -1209,7 +1209,7 @@ final class WP_Theme implements ArrayAccess {
 		}
 
 		foreach ( array( 'png', 'gif', 'jpg', 'jpeg', 'webp' ) as $ext ) {
-			if ( file_exists( $this->get_stylesheet_directory() . "/screenshot.$ext" ) ) {
+			if ( wp_file_exists( $this->get_stylesheet_directory() . "/screenshot.$ext" ) ) {
 				$this->cache_add( 'screenshot', 'screenshot.' . $ext );
 				if ( 'relative' === $uri ) {
 					return 'screenshot.' . $ext;
@@ -1554,7 +1554,7 @@ final class WP_Theme implements ArrayAccess {
 
 		if ( empty( $file ) ) {
 			$path = $stylesheet_directory;
-		} elseif ( file_exists( $stylesheet_directory . '/' . $file ) ) {
+		} elseif ( wp_file_exists( $stylesheet_directory . '/' . $file ) ) {
 			$path = $stylesheet_directory . '/' . $file;
 		} else {
 			$path = $template_directory . '/' . $file;

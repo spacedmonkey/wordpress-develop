@@ -2043,7 +2043,7 @@ function wp_mkdir_p( $target ) {
 		$target = '/';
 	}
 
-	if ( file_exists( $target ) ) {
+	if ( wp_file_exists( $target ) ) {
 		return @is_dir( $target );
 	}
 
@@ -2275,7 +2275,7 @@ function win_is_writable( $path ) {
 	}
 
 	// Check tmp file for read/write capabilities.
-	$should_delete_tmp_file = ! file_exists( $path );
+	$should_delete_tmp_file = ! wp_file_exists( $path );
 
 	$f = @fopen( $path, 'a' );
 	if ( false === $f ) {
@@ -2597,7 +2597,7 @@ function wp_unique_filename( $dir, $filename, $unique_filename_callback = null )
 		 * Increment the number added to the file name if there are any files in $dir
 		 * whose names match one of the possible name variations.
 		 */
-		while ( file_exists( $_dir . $filename ) || ( $lc_filename && file_exists( $_dir . $lc_filename ) ) ) {
+		while ( wp_file_exists( $_dir . $filename ) || ( $lc_filename && wp_file_exists( $_dir . $lc_filename ) ) ) {
 			$new_number = (int) $number + 1;
 
 			if ( $lc_filename ) {
@@ -2790,7 +2790,7 @@ function wp_unique_filename( $dir, $filename, $unique_filename_callback = null )
  */
 function _wp_check_alternate_file_names( $filenames, $dir, $files ) {
 	foreach ( $filenames as $filename ) {
-		if ( file_exists( $dir . $filename ) ) {
+		if ( wp_file_exists( $dir . $filename ) ) {
 			return true;
 		}
 
@@ -3075,7 +3075,7 @@ function wp_check_filetype_and_ext( $file, $filename, $mimes = null ) {
 	$type        = $wp_filetype['type'];
 
 	// We can't do any further validation without a file to work with.
-	if ( ! file_exists( $file ) ) {
+	if ( ! wp_file_exists( $file ) ) {
 		return compact( 'ext', 'type', 'proper_filename' );
 	}
 
@@ -3515,7 +3515,7 @@ function wp_filesize( $path ) {
 		return $size;
 	}
 
-	$size = file_exists( $path ) ? (int) filesize( $path ) : 0;
+	$size = wp_file_exists( $path ) ? (int) filesize( $path ) : 0;
 
 	/**
 	 * Filters the size of the file.
@@ -3526,6 +3526,24 @@ function wp_filesize( $path ) {
 	 * @param string $path Path to the file.
 	 */
 	return (int) apply_filters( 'wp_filesize', $size, $path );
+}
+
+
+function wp_file_exists( $path ){
+	static $file_size_cache;
+
+	if( ! $file_size_cache ){
+		$file_size_cache = array();
+	}
+
+	$key = md5( $path );
+	if( isset( $file_size_cache[$key])){
+		return $file_size_cache[$key];
+	}
+
+	$file_size_cache[$key] = file_exists( $path );
+
+	return $file_size_cache[$key];
 }
 
 /**
@@ -5343,7 +5361,7 @@ function dead_db() {
 	wp_load_translations_early();
 
 	// Load custom DB error template, if present.
-	if ( file_exists( WP_CONTENT_DIR . '/db-error.php' ) ) {
+	if ( wp_file_exists( WP_CONTENT_DIR . '/db-error.php' ) ) {
 		require_once WP_CONTENT_DIR . '/db-error.php';
 		die();
 	}
@@ -8320,7 +8338,7 @@ function recurse_dirsize( $directory, $exclude = null, $max_execution_time = nul
 		return $directory_cache[ $directory ];
 	}
 
-	if ( ! file_exists( $directory ) || ! is_dir( $directory ) || ! is_readable( $directory ) ) {
+	if ( ! wp_file_exists( $directory ) || ! is_dir( $directory ) || ! is_readable( $directory ) ) {
 		return false;
 	}
 

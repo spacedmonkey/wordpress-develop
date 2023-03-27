@@ -498,7 +498,7 @@ class WP_REST_Attachments_Controller extends WP_REST_Posts_Controller {
 		 * Keep the original file path to get a modified name later.
 		 */
 		$image_file_to_edit = $image_file;
-		if ( ! file_exists( $image_file_to_edit ) ) {
+		if ( ! wp_file_exists( $image_file_to_edit ) ) {
 			$image_file_to_edit = _load_image_to_edit_path( $attachment_id );
 		}
 

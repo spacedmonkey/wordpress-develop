@@ -2367,7 +2367,7 @@ function wp_common_block_scripts_and_styles() {
 			$files  = glob( __DIR__ . "/blocks/**/theme.$suffix" );
 			foreach ( $files as $path ) {
 				$block_name = basename( dirname( $path ) );
-				if ( is_rtl() && file_exists( __DIR__ . "/blocks/$block_name/theme-rtl.$suffix" ) ) {
+				if ( is_rtl() && wp_file_exists( __DIR__ . "/blocks/$block_name/theme-rtl.$suffix" ) ) {
 					$path = __DIR__ . "/blocks/$block_name/theme-rtl.$suffix";
 				}
 				wp_add_inline_style( "wp-block-{$block_name}", file_get_contents( $path ) );
@@ -2874,7 +2874,7 @@ function wp_maybe_inline_styles() {
 
 	// Build an array of styles that have a path defined.
 	foreach ( $wp_styles->queue as $handle ) {
-		if ( wp_styles()->get_data( $handle, 'path' ) && file_exists( $wp_styles->registered[ $handle ]->extra['path'] ) ) {
+		if ( wp_styles()->get_data( $handle, 'path' ) && wp_file_exists( $wp_styles->registered[ $handle ]->extra['path'] ) ) {
 			$styles[] = array(
 				'handle' => $handle,
 				'src'    => $wp_styles->registered[ $handle ]->src,
@@ -3132,7 +3132,7 @@ function wp_enqueue_block_style( $block_name, $args ) {
 			$rtl_file_path = str_replace( '.css', '-rtl.css', $args['path'] );
 
 			// Add RTL stylesheet.
-			if ( file_exists( $rtl_file_path ) ) {
+			if ( wp_file_exists( $rtl_file_path ) ) {
 				wp_style_add_data( $args['handle'], 'rtl', 'replace' );
 
 				if ( is_rtl() ) {

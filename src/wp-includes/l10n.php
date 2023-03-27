@@ -873,7 +873,7 @@ function load_default_textdomain( $locale = null ) {
 
 	$return = load_textdomain( 'default', WP_LANG_DIR . "/$locale.mo", $locale );
 
-	if ( ( is_multisite() || ( defined( 'WP_INSTALLING_NETWORK' ) && WP_INSTALLING_NETWORK ) ) && ! file_exists( WP_LANG_DIR . "/admin-$locale.mo" ) ) {
+	if ( ( is_multisite() || ( defined( 'WP_INSTALLING_NETWORK' ) && WP_INSTALLING_NETWORK ) ) && ! wp_file_exists( WP_LANG_DIR . "/admin-$locale.mo" ) ) {
 		load_textdomain( 'default', WP_LANG_DIR . "/ms-$locale.mo", $locale );
 		return $return;
 	}

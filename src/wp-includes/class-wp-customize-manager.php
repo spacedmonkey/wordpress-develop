@@ -1353,7 +1353,7 @@ final class WP_Customize_Manager {
 					$attachment_post = $existing_starter_content_posts[ 'attachment:' . $attachment['post_name'] ];
 					$attachment_id   = $attachment_post->ID;
 					$attached_file   = get_attached_file( $attachment_id );
-					if ( empty( $attached_file ) || ! file_exists( $attached_file ) ) {
+					if ( empty( $attached_file ) || ! wp_file_exists( $attached_file ) ) {
 						$attachment_id = null;
 						$attached_file = null;
 					} elseif ( $this->get_stylesheet() !== get_post_meta( $attachment_post->ID, '_starter_content_theme', true ) ) {
@@ -1661,11 +1661,11 @@ final class WP_Customize_Manager {
 			}
 
 			$file_path = null;
-			if ( file_exists( $attachment['file'] ) ) {
+			if ( wp_file_exists( $attachment['file'] ) ) {
 				$file_path = $attachment['file']; // Could be absolute path to file in plugin.
-			} elseif ( is_child_theme() && file_exists( get_stylesheet_directory() . '/' . $attachment['file'] ) ) {
+			} elseif ( is_child_theme() && wp_file_exists( get_stylesheet_directory() . '/' . $attachment['file'] ) ) {
 				$file_path = get_stylesheet_directory() . '/' . $attachment['file'];
-			} elseif ( file_exists( get_template_directory() . '/' . $attachment['file'] ) ) {
+			} elseif ( wp_file_exists( get_template_directory() . '/' . $attachment['file'] ) ) {
 				$file_path = get_template_directory() . '/' . $attachment['file'];
 			} else {
 				continue;

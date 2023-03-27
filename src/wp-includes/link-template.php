@@ -4530,7 +4530,7 @@ function get_theme_file_uri( $file = '' ) {
 
 	if ( empty( $file ) ) {
 		$url = get_stylesheet_directory_uri();
-	} elseif ( file_exists( get_stylesheet_directory() . '/' . $file ) ) {
+	} elseif ( wp_file_exists( get_stylesheet_directory() . '/' . $file ) ) {
 		$url = get_stylesheet_directory_uri() . '/' . $file;
 	} else {
 		$url = get_template_directory_uri() . '/' . $file;
@@ -4591,7 +4591,7 @@ function get_theme_file_path( $file = '' ) {
 
 	if ( empty( $file ) ) {
 		$path = get_stylesheet_directory();
-	} elseif ( file_exists( get_stylesheet_directory() . '/' . $file ) ) {
+	} elseif ( wp_file_exists( get_stylesheet_directory() . '/' . $file ) ) {
 		$path = get_stylesheet_directory() . '/' . $file;
 	} else {
 		$path = get_template_directory() . '/' . $file;

@@ -279,9 +279,9 @@ function get_locale_stylesheet_uri() {
 	$stylesheet_dir_uri = get_stylesheet_directory_uri();
 	$dir                = get_stylesheet_directory();
 	$locale             = get_locale();
-	if ( file_exists( "$dir/$locale.css" ) ) {
+	if ( wp_file_exists( "$dir/$locale.css" ) ) {
 		$stylesheet_uri = "$stylesheet_dir_uri/$locale.css";
-	} elseif ( ! empty( $wp_locale->text_direction ) && file_exists( "$dir/{$wp_locale->text_direction}.css" ) ) {
+	} elseif ( ! empty( $wp_locale->text_direction ) && wp_file_exists( "$dir/{$wp_locale->text_direction}.css" ) ) {
 		$stylesheet_uri = "$stylesheet_dir_uri/{$wp_locale->text_direction}.css";
 	} else {
 		$stylesheet_uri = '';
@@ -403,11 +403,11 @@ function get_theme_roots() {
 function register_theme_directory( $directory ) {
 	global $wp_theme_directories;
 
-	if ( ! file_exists( $directory ) ) {
+	if ( ! wp_file_exists( $directory ) ) {
 		// Try prepending as the theme directory could be relative to the content directory.
 		$directory = WP_CONTENT_DIR . '/' . $directory;
 		// If this directory does not exist, return and do not register.
-		if ( ! file_exists( $directory ) ) {
+		if ( ! wp_file_exists( $directory ) ) {
 			return false;
 		}
 	}
@@ -509,7 +509,7 @@ function search_theme_directories( $force = false ) {
 			if ( ! is_dir( $theme_root . '/' . $dir ) || '.' === $dir[0] || 'CVS' === $dir ) {
 				continue;
 			}
-			if ( file_exists( $theme_root . '/' . $dir . '/style.css' ) ) {
+			if ( wp_file_exists( $theme_root . '/' . $dir . '/style.css' ) ) {
 				// wp-content/themes/a-single-theme
 				// wp-content/themes is $theme_root, a-single-theme is $dir.
 				$found_themes[ $dir ] = array(
@@ -529,7 +529,7 @@ function search_theme_directories( $force = false ) {
 					if ( ! is_dir( $theme_root . '/' . $dir . '/' . $sub_dir ) || '.' === $dir[0] || 'CVS' === $dir ) {
 						continue;
 					}
-					if ( ! file_exists( $theme_root . '/' . $dir . '/' . $sub_dir . '/style.css' ) ) {
+					if ( ! wp_file_exists( $theme_root . '/' . $dir . '/' . $sub_dir . '/style.css' ) ) {
 						continue;
 					}
 					$found_themes[ $dir . '/' . $sub_dir ] = array(
@@ -868,14 +868,14 @@ function validate_current_theme() {
 	}
 
 	if (
-		! file_exists( get_template_directory() . '/templates/index.html' )
-		&& ! file_exists( get_template_directory() . '/block-templates/index.html' ) // Deprecated path support since 5.9.0.
-		&& ! file_exists( get_template_directory() . '/index.php' )
+		! wp_file_exists( get_template_directory() . '/templates/index.html' )
+		&& ! wp_file_exists( get_template_directory() . '/block-templates/index.html' ) // Deprecated path support since 5.9.0.
+		&& ! wp_file_exists( get_template_directory() . '/index.php' )
 	) {
 		// Invalid.
-	} elseif ( ! file_exists( get_template_directory() . '/style.css' ) ) {
+	} elseif ( ! wp_file_exists( get_template_directory() . '/style.css' ) ) {
 		// Invalid.
-	} elseif ( is_child_theme() && ! file_exists( get_stylesheet_directory() . '/style.css' ) ) {
+	} elseif ( is_child_theme() && ! wp_file_exists( get_stylesheet_directory() . '/style.css' ) ) {
 		// Invalid.
 	} else {
 		// Valid.
@@ -2178,14 +2178,14 @@ function get_editor_stylesheets() {
 			$template_dir = get_template_directory();
 
 			foreach ( $editor_styles as $key => $file ) {
-				if ( $file && file_exists( "$template_dir/$file" ) ) {
+				if ( $file && wp_file_exists( "$template_dir/$file" ) ) {
 					$stylesheets[] = "$template_uri/$file";
 				}
 			}
 		}
 
 		foreach ( $editor_styles as $file ) {
-			if ( $file && file_exists( "$style_dir/$file" ) ) {
+			if ( $file && wp_file_exists( "$style_dir/$file" ) ) {
 				$stylesheets[] = "$style_uri/$file";
 			}
 		}

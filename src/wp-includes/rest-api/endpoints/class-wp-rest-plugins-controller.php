@@ -838,7 +838,7 @@ class WP_REST_Plugins_Controller extends WP_REST_Controller {
 	 * @return bool
 	 */
 	protected function is_plugin_installed( $plugin ) {
-		return file_exists( WP_PLUGIN_DIR . '/' . $plugin );
+		return wp_file_exists( WP_PLUGIN_DIR . '/' . $plugin );
 	}
 
 	/**

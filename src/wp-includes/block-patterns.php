@@ -374,7 +374,7 @@ function _register_theme_block_patterns() {
 		if ( ! is_dir( $dirpath ) || ! is_readable( $dirpath ) ) {
 			continue;
 		}
-		if ( file_exists( $dirpath ) ) {
+		if ( wp_file_exists( $dirpath ) ) {
 			$files = glob( $dirpath . '*.php' );
 			if ( $files ) {
 				foreach ( $files as $file ) {

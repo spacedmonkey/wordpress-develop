@@ -266,7 +266,7 @@ function register_block_style_handle( $metadata, $field_name, $index = 0 ) {
 			$rtl_file = str_replace( '.css', '-rtl.css', $style_path_norm );
 		}
 
-		if ( is_rtl() && file_exists( $rtl_file ) ) {
+		if ( is_rtl() && wp_file_exists( $rtl_file ) ) {
 			wp_style_add_data( $style_handle, 'rtl', 'replace' );
 			wp_style_add_data( $style_handle, 'suffix', $suffix );
 			wp_style_add_data( $style_handle, 'path', $rtl_file );
@@ -325,7 +325,7 @@ function register_block_type_from_metadata( $file_or_folder, $args = array() ) {
 		trailingslashit( $file_or_folder ) . 'block.json' :
 		$file_or_folder;
 
-	if ( ! file_exists( $metadata_file ) ) {
+	if ( ! wp_file_exists( $metadata_file ) ) {
 		return false;
 	}
 
@@ -533,7 +533,7 @@ function register_block_type_from_metadata( $file_or_folder, $args = array() ) {
  * @return WP_Block_Type|false The registered block type on success, or false on failure.
  */
 function register_block_type( $block_type, $args = array() ) {
-	if ( is_string( $block_type ) && file_exists( $block_type ) ) {
+	if ( is_string( $block_type ) && wp_file_exists( $block_type ) ) {
 		return register_block_type_from_metadata( $block_type, $args );
 	}
 

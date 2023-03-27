@@ -3401,7 +3401,7 @@ function rich_edit_exists() {
 	_deprecated_function( __FUNCTION__, '3.9.0' );
 
 	if ( ! isset( $wp_rich_edit_exists ) )
-		$wp_rich_edit_exists = file_exists( ABSPATH . WPINC . '/js/tinymce/tinymce.js' );
+		$wp_rich_edit_exists = wp_file_exists( ABSPATH . WPINC . '/js/tinymce/tinymce.js' );
 
 	return $wp_rich_edit_exists;
 }
@@ -4347,7 +4347,7 @@ function wp_get_attachment_thumb_file( $post_id = 0 ) {
 
 	if ( ! empty( $imagedata['thumb'] ) ) {
 		$thumbfile = str_replace( wp_basename( $file ), $imagedata['thumb'], $file );
-		if ( file_exists( $thumbfile ) ) {
+		if ( wp_file_exists( $thumbfile ) ) {
 			/**
 			 * Filters the attachment thumbnail file path.
 			 *
