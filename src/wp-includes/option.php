@@ -264,7 +264,7 @@ function get_option( $option, $default_value = false ) {
  * @param string $option Option name.
  */
 function wp_protect_special_option( $option ) {
-	if ( 'alloptions' === $option || 'notoptions' === $option ) {
+	if ( 'alloptions' === $option || 'notoptions' === $option || 'alloptions_keys' === $option ) {
 		wp_die(
 			sprintf(
 				/* translators: %s: Option name. */
@@ -318,7 +318,10 @@ function wp_load_alloptions( $force_cache = false ) {
 	}
 
 	if ( ! wp_installing() || ! is_multisite() ) {
-		$alloptions = wp_cache_get( 'alloptions', 'options', $force_cache );
+		$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options', $force_cache );
+		if ( is_array( $alloptions_keys ) ) {
+			$alloptions = wp_cache_get_multiple( $alloptions_keys, 'options' );
+		}
 	} else {
 		$alloptions = false;
 	}
@@ -346,7 +349,10 @@ function wp_load_alloptions( $force_cache = false ) {
 			 */
 			$alloptions = apply_filters( 'pre_cache_alloptions', $alloptions );
 
-			wp_cache_add( 'alloptions', $alloptions, 'options' );
+			$alloptions['alloptions']      = array();
+			$alloptions['alloptions_keys'] = array_keys( $alloptions );
+
+			wp_cache_add_multiple( $alloptions, 'options' );
 		}
 	}
 
@@ -546,13 +552,16 @@ function update_option( $option, $value, $autoload = null ) {
 	}
 
 	if ( ! wp_installing() ) {
-		$alloptions = wp_load_alloptions( true );
-		if ( isset( $alloptions[ $option ] ) ) {
-			$alloptions[ $option ] = $serialized_value;
-			wp_cache_set( 'alloptions', $alloptions, 'options' );
-		} else {
-			wp_cache_set( $option, $serialized_value, 'options' );
+		$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+		if ( ! is_array( $alloptions_keys ) ) {
+			wp_load_alloptions( true );
+			$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
 		}
+		if ( ! in_array( $option, $alloptions_keys, true ) ) {
+			$alloptions_keys[] = $option;
+			wp_cache_set( 'alloptions_keys', $alloptions_keys, 'options' );
+		}
+		wp_cache_set( $option, $serialized_value, 'options' );
 	}
 
 	/**
@@ -684,12 +693,18 @@ function add_option( $option, $value = '', $deprecated = '', $autoload = 'yes' )
 
 	if ( ! wp_installing() ) {
 		if ( 'yes' === $autoload ) {
-			$alloptions            = wp_load_alloptions( true );
-			$alloptions[ $option ] = $serialized_value;
-			wp_cache_set( 'alloptions', $alloptions, 'options' );
-		} else {
-			wp_cache_set( $option, $serialized_value, 'options' );
+			$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+			if ( ! is_array( $alloptions_keys ) ) {
+				wp_load_alloptions( true );
+				$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+			}
+			if ( ! in_array( $option, $alloptions_keys, true ) ) {
+				$alloptions_keys[] = $option;
+				wp_cache_set( 'alloptions_keys', $alloptions_keys, 'options' );
+			}
 		}
+
+		wp_cache_set( $option, $serialized_value, 'options' );
 	}
 
 	// This option exists now.
@@ -768,14 +783,19 @@ function delete_option( $option ) {
 
 	if ( ! wp_installing() ) {
 		if ( 'yes' === $row->autoload ) {
-			$alloptions = wp_load_alloptions( true );
-			if ( is_array( $alloptions ) && isset( $alloptions[ $option ] ) ) {
-				unset( $alloptions[ $option ] );
-				wp_cache_set( 'alloptions', $alloptions, 'options' );
+			$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+			if ( ! is_array( $alloptions_keys ) ) {
+				wp_load_alloptions( true );
+				$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
 			}
-		} else {
-			wp_cache_delete( $option, 'options' );
+			$key = array_search( $option, $alloptions_keys );
+			if ( $key !== false ) {
+				unset( $alloptions_keys[ $key ] );
+				wp_cache_set( 'alloptions_keys', $alloptions_keys, 'options' );
+			}
 		}
+
+		wp_cache_delete( $option, 'options' );
 	}
 
 	if ( $result ) {
