@@ -1948,6 +1948,21 @@ function wp_localize_community_events() {
 	);
 }
 
+function style_loader_tag_inline( $tag, $handle, $href, $media, $type_attr ) {
+	if ( ! did_action( 'wp_body_open' ) ) {
+		return $tag;
+	}
+
+	$output = sprintf( '@import url("%s") %s;', $href, $media );
+
+	return sprintf(
+		"<style id='%s-inline-css'%s>%s</style>\n",
+		esc_attr( $handle ),
+		$type_attr,
+		$output
+	);
+}
+
 /**
  * Administration Screen CSS for changing the styles.
  *

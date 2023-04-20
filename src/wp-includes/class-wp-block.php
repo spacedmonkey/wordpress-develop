@@ -263,7 +263,14 @@ class WP_Block {
 		}
 
 		if ( null !== $this->block_type ) {
-			wp_enqueue_style( 'wp-block-library' );
+			static $do_inline;
+			if ( wp_is_block_theme() ) {
+				wp_enqueue_style( 'wp-block-library' );
+			} elseif ( ! isset( $do_inline ) ) {
+				$do_inline = true;
+				$styles    = wp_styles();
+				$styles->do_item( 'wp-block-library' );
+			}
 		}
 
 		if ( ( ! empty( $this->block_type->script_handles ) ) ) {

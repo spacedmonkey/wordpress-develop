@@ -247,8 +247,9 @@ class WP_Styles extends WP_Dependencies {
 		 * @param string $handle The style's registered handle.
 		 * @param string $href   The stylesheet's source URL.
 		 * @param string $media  The stylesheet's media attribute.
+		 * @param string $type_attr  The stylesheet's media attribute.
 		 */
-		$tag = apply_filters( 'style_loader_tag', $tag, $handle, $href, $media );
+		$tag = apply_filters( 'style_loader_tag', $tag, $handle, $href, $media, $this->type_attr );
 
 		if ( 'rtl' === $this->text_direction && isset( $obj->extra['rtl'] ) && $obj->extra['rtl'] ) {
 			if ( is_bool( $obj->extra['rtl'] ) || 'replace' === $obj->extra['rtl'] ) {
