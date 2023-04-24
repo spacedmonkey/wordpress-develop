@@ -262,7 +262,7 @@ class WP_Block {
 			$post = $global_post;
 		}
 
-		if ( null !== $this->block_type && ! wp_style_is( 'wp-block-library', 'done' ) ) {
+		if ( null !== $this->block_type && ! is_admin() && ! wp_style_is( 'wp-block-library', 'done' ) ) {
 			add_filter( 'style_loader_tag', 'style_loader_tag_inline', 10, 5 );
 			$styles = wp_styles();
 			$styles->do_items( 'wp-block-library' );

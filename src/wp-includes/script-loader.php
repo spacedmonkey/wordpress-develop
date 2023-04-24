@@ -1948,11 +1948,20 @@ function wp_localize_community_events() {
 	);
 }
 
+/**
+ * Filter the output the html link tag to make it into a style tag.
+ *
+ * @since 6.3.0
+ *
+ * @param string $tag    The link tag for the enqueued style.
+ * @param string $handle The style's registered handle.
+ * @param string $href   The stylesheet's source URL.
+ * @param string $media  The stylesheet's media attribute.
+ * @param string $type_attr  The stylesheet's media attribute.
+ *
+ * @return string
+ */
 function style_loader_tag_inline( $tag, $handle, $href, $media, $type_attr ) {
-	if ( ! did_action( 'wp_body_open' ) ) {
-		return $tag;
-	}
-
 	$output = sprintf( '@import url("%s") %s;', $href, $media );
 
 	return sprintf(
@@ -2372,7 +2381,7 @@ function wp_common_block_scripts_and_styles() {
 		return;
 	}
 
-	if ( wp_is_block_theme() ) {
+	if ( is_admin() || wp_is_block_theme() ) {
 		wp_enqueue_style( 'wp-block-library' );
 	}
 
