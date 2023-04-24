@@ -262,15 +262,11 @@ class WP_Block {
 			$post = $global_post;
 		}
 
-		if ( null !== $this->block_type ) {
-			static $do_inline;
-			if ( wp_is_block_theme() ) {
-				wp_enqueue_style( 'wp-block-library' );
-			} elseif ( ! isset( $do_inline ) ) {
-				$do_inline = true;
-				$styles    = wp_styles();
-				$styles->do_item( 'wp-block-library' );
-			}
+		if ( null !== $this->block_type && ! wp_style_is( 'wp-block-library', 'done' ) ) {
+			add_filter( 'style_loader_tag', 'style_loader_tag_inline', 10, 5 );
+			$styles = wp_styles();
+			$styles->do_items( 'wp-block-library' );
+			remove_filter( 'style_loader_tag', 'style_loader_tag_inline' );
 		}
 
 		if ( ( ! empty( $this->block_type->script_handles ) ) ) {
