@@ -805,14 +805,22 @@ class WP_Term_Query {
 			return $count;
 		}
 
-		$terms = $wpdb->get_results( $this->request ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
+		$single_field = ( $fields === 't.term_id' );
+		if ( $single_field ) {
+			$terms = $wpdb->get_col( $this->request ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		} else {
+			$terms = $wpdb->get_results( $this->request ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
 		if ( empty( $terms ) ) {
 			wp_cache_add( $cache_key, array(), 'term-queries' );
 			return array();
 		}
 
-		$term_ids = wp_list_pluck( $terms, 'term_id' );
+		if ( $single_field ) {
+			$term_ids = $terms;
+		} else {
+			$term_ids = wp_list_pluck( $terms, 'term_id' );
+		}
 		_prime_term_caches( $term_ids, false );
 		$term_objects = $this->populate_terms( $terms );
 
