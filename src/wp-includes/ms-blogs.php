@@ -535,6 +535,8 @@ function switch_to_blog( $new_blog_id, $deprecated = null ) {
 	$GLOBALS['table_prefix'] = $wpdb->get_blog_prefix();
 	$GLOBALS['blog_id']      = $new_blog_id;
 
+	wp_load_options( true );
+
 	if ( function_exists( 'wp_cache_switch_to_blog' ) ) {
 		wp_cache_switch_to_blog( $new_blog_id );
 	} else {

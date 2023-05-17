@@ -188,14 +188,14 @@ function get_option( $option, $default_value = false ) {
 			return apply_filters( "default_option_{$option}", $default_value, $option, $passed_default );
 		}
 
-		$alloptions = wp_load_alloptions();
+		$value = wp_cache_get( $option, 'options' );
 
-		if ( isset( $alloptions[ $option ] ) ) {
-			$value = $alloptions[ $option ];
-		} else {
-			$value = wp_cache_get( $option, 'options' );
+		if ( false === $value ) {
+			$alloptions = wp_load_alloptions();
 
-			if ( false === $value ) {
+			if ( isset( $alloptions[ $option ] ) ) {
+				$value = $alloptions[ $option ];
+			} else {
 				$row = $wpdb->get_row( $wpdb->prepare( "SELECT option_value FROM $wpdb->options WHERE option_name = %s LIMIT 1", $option ) );
 
 				// Has to be get_row() instead of get_var() because of funkiness with 0, false, null values.
@@ -299,8 +299,6 @@ function form_option( $option ) {
  * @return array List of all options.
  */
 function wp_load_alloptions( $force_cache = false ) {
-	global $wpdb;
-
 	/**
 	 * Filters the array of alloptions before it is populated.
 	 *
@@ -317,38 +315,7 @@ function wp_load_alloptions( $force_cache = false ) {
 		return $alloptions;
 	}
 
-	if ( ! wp_installing() || ! is_multisite() ) {
-		$alloptions = wp_cache_get( 'alloptions', 'options', $force_cache );
-	} else {
-		$alloptions = false;
-	}
-
-	if ( ! $alloptions ) {
-		$suppress      = $wpdb->suppress_errors();
-		$alloptions_db = $wpdb->get_results( "SELECT option_name, option_value FROM $wpdb->options WHERE autoload = 'yes'" );
-		if ( ! $alloptions_db ) {
-			$alloptions_db = $wpdb->get_results( "SELECT option_name, option_value FROM $wpdb->options" );
-		}
-		$wpdb->suppress_errors( $suppress );
-
-		$alloptions = array();
-		foreach ( (array) $alloptions_db as $o ) {
-			$alloptions[ $o->option_name ] = $o->option_value;
-		}
-
-		if ( ! wp_installing() || ! is_multisite() ) {
-			/**
-			 * Filters all options before caching them.
-			 *
-			 * @since 4.9.0
-			 *
-			 * @param array $alloptions Array with all options.
-			 */
-			$alloptions = apply_filters( 'pre_cache_alloptions', $alloptions );
-
-			wp_cache_add( 'alloptions', $alloptions, 'options' );
-		}
-	}
+	wp_load_options( $force_cache );
 
 	/**
 	 * Filters all options after retrieving them.
@@ -357,7 +324,61 @@ function wp_load_alloptions( $force_cache = false ) {
 	 *
 	 * @param array $alloptions Array with all options.
 	 */
-	return apply_filters( 'alloptions', $alloptions );
+	return apply_filters( 'alloptions', array() );
+}
+
+function wp_load_options( $clear_cache = false ) {
+	global $wpdb;
+
+	static $options_loaded = false;
+
+	if ( $clear_cache ) {
+		$options_loaded = true;
+		return;
+	}
+
+	if ( true === $options_loaded ) {
+		return;
+	}
+
+	if ( ! wp_installing() || ! is_multisite() ) {
+		$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+	} else {
+		$alloptions_keys = false;
+	}
+
+	if ( is_array( $alloptions_keys ) && count( $alloptions_keys ) > 1 ) {
+		wp_cache_get_multiple( $alloptions_keys, 'options' );
+		return;
+	}
+
+	$suppress      = $wpdb->suppress_errors();
+	$alloptions_db = $wpdb->get_results( "SELECT option_name, option_value FROM $wpdb->options WHERE autoload = 'yes'" );
+	if ( ! $alloptions_db ) {
+		$alloptions_db = $wpdb->get_results( "SELECT option_name, option_value FROM $wpdb->options" );
+	}
+	$wpdb->suppress_errors( $suppress );
+
+	$alloptions = array();
+	foreach ( (array) $alloptions_db as $o ) {
+		$alloptions[ $o->option_name ] = $o->option_value;
+	}
+
+	if ( ! wp_installing() || ! is_multisite() ) {
+		/**
+		 * Filters all options before caching them.
+		 *
+		 * @since 4.9.0
+		 *
+		 * @param array $alloptions Array with all options.
+		 */
+		$alloptions = apply_filters( 'pre_cache_alloptions', $alloptions );
+
+		wp_cache_add( 'alloptions_keys', array_keys( $alloptions ), 'options' );
+		wp_cache_add_multiple( $alloptions, 'options' );
+	}
+
+	$options_loaded = true;
 }
 
 /**
@@ -546,13 +567,7 @@ function update_option( $option, $value, $autoload = null ) {
 	}
 
 	if ( ! wp_installing() ) {
-		$alloptions = wp_load_alloptions( true );
-		if ( isset( $alloptions[ $option ] ) ) {
-			$alloptions[ $option ] = $serialized_value;
-			wp_cache_set( 'alloptions', $alloptions, 'options' );
-		} else {
-			wp_cache_set( $option, $serialized_value, 'options' );
-		}
+		wp_cache_set( $option, $serialized_value, 'options' );
 	}
 
 	/**
@@ -684,12 +699,14 @@ function add_option( $option, $value = '', $deprecated = '', $autoload = 'yes' )
 
 	if ( ! wp_installing() ) {
 		if ( 'yes' === $autoload ) {
-			$alloptions            = wp_load_alloptions( true );
-			$alloptions[ $option ] = $serialized_value;
-			wp_cache_set( 'alloptions', $alloptions, 'options' );
-		} else {
-			wp_cache_set( $option, $serialized_value, 'options' );
+			$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+			if ( false === $alloptions_keys ) {
+				$alloptions_keys = array();
+			}
+			$alloptions_keys[] = $option;
+			wp_cache_set( 'alloptions_keys', $alloptions_keys, 'options' );
 		}
+		wp_cache_set( $option, $serialized_value, 'options' );
 	}
 
 	// This option exists now.
@@ -768,14 +785,14 @@ function delete_option( $option ) {
 
 	if ( ! wp_installing() ) {
 		if ( 'yes' === $row->autoload ) {
-			$alloptions = wp_load_alloptions( true );
-			if ( is_array( $alloptions ) && isset( $alloptions[ $option ] ) ) {
-				unset( $alloptions[ $option ] );
-				wp_cache_set( 'alloptions', $alloptions, 'options' );
+			$alloptions_keys = wp_cache_get( 'alloptions_keys', 'options' );
+			if ( false === $alloptions_keys ) {
+				$alloptions_keys = array();
 			}
-		} else {
-			wp_cache_delete( $option, 'options' );
+			$alloptions_keys = array_diff( $alloptions_keys, array( $option ) );
+			wp_cache_set( 'alloptions_keys', $alloptions_keys, 'options' );
 		}
+		wp_cache_delete( $option, 'options' );
 	}
 
 	if ( $result ) {

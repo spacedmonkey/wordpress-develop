@@ -956,8 +956,10 @@ function _wp_specialchars( $text, $quote_style = ENT_NOQUOTES, $charset = false,
 	if ( ! $charset ) {
 		static $_charset = null;
 		if ( ! isset( $_charset ) ) {
-			$alloptions = wp_load_alloptions();
-			$_charset   = isset( $alloptions['blog_charset'] ) ? $alloptions['blog_charset'] : '';
+			$_charset = wp_cache_get( 'blog_charset', 'options' );
+			if ( false === $_charset ) {
+				$_charset = '';
+			}
 		}
 		$charset = $_charset;
 	}

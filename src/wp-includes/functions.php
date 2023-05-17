@@ -1767,13 +1767,16 @@ function is_blog_installed() {
 
 	$suppress = $wpdb->suppress_errors();
 	if ( ! wp_installing() ) {
-		$alloptions = wp_load_alloptions();
+		wp_load_options();
 	}
+
+	$siteurl = wp_cache_get( 'siteurl', 'options' );
+
 	// If siteurl is not set to autoload, check it specifically.
-	if ( ! isset( $alloptions['siteurl'] ) ) {
+	if ( false === $siteurl ) {
 		$installed = $wpdb->get_var( "SELECT option_value FROM $wpdb->options WHERE option_name = 'siteurl'" );
 	} else {
-		$installed = $alloptions['siteurl'];
+		$installed = $siteurl;
 	}
 	$wpdb->suppress_errors( $suppress );
 
