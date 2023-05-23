@@ -181,7 +181,7 @@ function register_block_script_handle( $metadata, $field_name, $index = 0 ) {
  * @return string|false Style handle provided directly or created through
  *                      style's registration, or false on failure.
  */
-function register_block_style_handle( $metadata, $field_name, $index = 0 ) {
+function register_block_style_handle( $metadata, $field_name, $index = 0, $skip_lookup = false ) {
 	if ( empty( $metadata[ $field_name ] ) ) {
 		return false;
 	}
@@ -216,33 +216,36 @@ function register_block_style_handle( $metadata, $field_name, $index = 0 ) {
 		return $style_handle;
 	}
 
-	// Check whether styles should have a ".min" suffix or not.
-	$suffix = SCRIPT_DEBUG ? '' : '.min';
-	if ( $is_core_block ) {
-		$style_path = "style$suffix.css";
-	}
+	$style_uri      = false;
+	$has_style_file = false;
 
-	$style_path_norm = wp_normalize_path( realpath( dirname( $metadata['file'] ) . '/' . $style_path ) );
-	$has_style_file  = '' !== $style_path_norm;
-
-	if ( $has_style_file ) {
-		$style_uri = plugins_url( $style_path, $metadata['file'] );
-
-		// Cache $theme_path_norm to avoid calling get_theme_file_path() multiple times.
-		static $theme_path_norm = '';
-		if ( ! $theme_path_norm ) {
-			$theme_path_norm = wp_normalize_path( get_theme_file_path() );
+	if ( ! $skip_lookup ) {
+		// Check whether styles should have a ".min" suffix or not.
+		$suffix = SCRIPT_DEBUG ? '' : '.min';
+		if ( $is_core_block ) {
+			$style_path = "style$suffix.css";
 		}
 
-		$is_theme_block = str_starts_with( $style_path_norm, $theme_path_norm );
+		$style_path_norm = wp_normalize_path( realpath( dirname( $metadata['file'] ) . '/' . $style_path ) );
+		$has_style_file  = '' !== $style_path_norm;
 
-		if ( $is_theme_block ) {
-			$style_uri = get_theme_file_uri( str_replace( $theme_path_norm, '', $style_path_norm ) );
-		} elseif ( $is_core_block ) {
-			$style_uri = includes_url( 'blocks/' . str_replace( 'core/', '', $metadata['name'] ) . "/style$suffix.css" );
+		if ( $has_style_file ) {
+			$style_uri = plugins_url( $style_path, $metadata['file'] );
+
+			// Cache $theme_path_norm to avoid calling get_theme_file_path() multiple times.
+			static $theme_path_norm = '';
+			if ( ! $theme_path_norm ) {
+				$theme_path_norm = wp_normalize_path( get_theme_file_path() );
+			}
+
+			$is_theme_block = str_starts_with( $style_path_norm, $theme_path_norm );
+
+			if ( $is_theme_block ) {
+				$style_uri = get_theme_file_uri( str_replace( $theme_path_norm, '', $style_path_norm ) );
+			} elseif ( $is_core_block ) {
+				$style_uri = includes_url( 'blocks/' . str_replace( 'core/', '', $metadata['name'] ) . "/style$suffix.css" );
+			}
 		}
-	} else {
-		$style_uri = false;
 	}
 
 	$style_handle = generate_block_asset_handle( $metadata['name'], $field_name, $index );
@@ -358,15 +361,18 @@ function register_block_type_from_metadata( $file_or_folder, $args = array() ) {
 	 */
 	$metadata = apply_filters( 'block_type_metadata', $metadata );
 
+	$skip_lookups = array();
 	// Add `style` and `editor_style` for core blocks if missing.
 	if ( ! empty( $metadata['name'] ) && str_starts_with( $metadata['name'], 'core/' ) ) {
 		$block_name = str_replace( 'core/', '', $metadata['name'] );
 
 		if ( ! isset( $metadata['style'] ) ) {
-			$metadata['style'] = "wp-block-$block_name";
+			$metadata['style']     = "wp-block-$block_name";
+			$skip_lookups['style'] = true;
 		}
 		if ( ! isset( $metadata['editorStyle'] ) ) {
-			$metadata['editorStyle'] = "wp-block-{$block_name}-editor";
+			$metadata['editorStyle']     = "wp-block-{$block_name}-editor";
+			$skip_lookups['editorStyle'] = true;
 		}
 	}
 
@@ -447,7 +453,8 @@ function register_block_type_from_metadata( $file_or_folder, $args = array() ) {
 					$result = register_block_style_handle(
 						$metadata,
 						$metadata_field_name,
-						$index
+						$index,
+						isset( $skip_lookups[ $metadata_field_name ] )
 					);
 					if ( $result ) {
 						$processed_styles[] = $result;
@@ -456,7 +463,9 @@ function register_block_type_from_metadata( $file_or_folder, $args = array() ) {
 			} else {
 				$result = register_block_style_handle(
 					$metadata,
-					$metadata_field_name
+					$metadata_field_name,
+					0,
+					isset( $skip_lookups[ $metadata_field_name ] )
 				);
 				if ( $result ) {
 					$processed_styles[] = $result;
