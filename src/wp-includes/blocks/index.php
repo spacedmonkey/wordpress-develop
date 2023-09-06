@@ -45,6 +45,7 @@ function register_core_block_style_handles() {
 	}
 
 	$files          = false;
+	$files_sizes    = false;
 	$transient_name = 'wp_core_block_css_files';
 
 	/*
@@ -63,32 +64,35 @@ function register_core_block_style_handles() {
 			&& $cached_files['version'] === $wp_version
 			&& isset( $cached_files['files'] )
 		) {
-			$files = $cached_files['files'];
+			$files       = $cached_files['files'];
+			$files_sizes = $cached_files['file_sizes'];
 		}
 	}
 
 	if ( ! $files ) {
-		$files = glob( wp_normalize_path( __DIR__ . '/**/**.css' ) );
-		$files = array_map(
-			static function ( $file ) use ( $includes_path ) {
-				return str_replace( $includes_path, '', $file );
-			},
-			$files
-		);
+		$raw_files   = glob( wp_normalize_path( __DIR__ . '/**/**.css' ) );
+		$files_sizes = array();
+		$files       = array();
+		foreach ( $raw_files as $file ) {
+			$filepath                 = str_replace( $includes_path, '', $file );
+			$files[]                  = $filepath;
+			$files_sizes[ $filepath ] = wp_filesize( $file );
+		}
 
 		// Save core block style paths in cache when not in development mode.
 		if ( $can_use_cached ) {
 			set_transient(
 				$transient_name,
 				array(
-					'version' => $wp_version,
-					'files'   => $files,
+					'version'    => $wp_version,
+					'files'      => $files,
+					'file_sizes' => $files_sizes,
 				)
 			);
 		}
 	}
 
-	$register_style = static function( $name, $filename, $style_handle ) use ( $includes_path, $includes_url, $suffix, $wp_styles, $files ) {
+	$register_style = static function( $name, $filename, $style_handle ) use ( $includes_path, $includes_url, $suffix, $wp_styles, $files, $files_sizes ) {
 		$style_path = "blocks/{$name}/{$filename}{$suffix}.css";
 		$path       = wp_normalize_path( $includes_path . $style_path );
 
@@ -102,12 +106,18 @@ function register_core_block_style_handles() {
 
 		$wp_styles->add( $style_handle, $includes_url . $style_path );
 		$wp_styles->add_data( $style_handle, 'path', $path );
+		if ( isset( $files_sizes[ $style_path ] ) ) {
+			$wp_styles->add_data( $style_handle, 'file_size', $files_sizes[ $style_path ] );
+		}
 
 		$rtl_file = str_replace( "{$suffix}.css", "-rtl{$suffix}.css", $path );
 		if ( is_rtl() && in_array( $rtl_file, $files, true ) ) {
 			$wp_styles->add_data( $style_handle, 'rtl', 'replace' );
 			$wp_styles->add_data( $style_handle, 'suffix', $suffix );
 			$wp_styles->add_data( $style_handle, 'path', $rtl_file );
+			if ( isset( $files_sizes[ $rtl_file ] ) ) {
+				$wp_styles->add_data( $style_handle, 'file_size', $files_sizes[ $rtl_file ] );
+			}
 		}
 	};
 
