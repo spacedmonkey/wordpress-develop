@@ -5,7 +5,7 @@ Welcome to the WordPress development repository! Please check out the [contribut
 * [Getting Started](#getting-started)
 * [Credentials](#credentials)
 
-## Getting Started
+## Getting Started!
 
 ### Using GitHub Codespaces
 
