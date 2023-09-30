@@ -821,8 +821,8 @@ final class WP_Theme implements ArrayAccess {
 		$this->block_template_folders = null;
 		$this->headers                = array();
 		$this->__construct( $this->stylesheet, $this->theme_root );
-		$option_name = 'wp_theme_patterns_' . $this->get_stylesheet();
-		delete_site_option( $option_name );
+		$processor = new WP_Block_Patterns_Processor( $this );
+		$processor->delete_cache();
 	}
 
 	/**

@@ -215,4 +215,13 @@ class WP_Block_Patterns_Processor {
 			}
 		}
 	}
+
+	/**
+	 * Delete the cached block patterns data.
+	 *
+	 * @since 6.4.0
+	 */
+	public function delete_cache() {
+		delete_site_option( $this->option_name );
+	}
 }

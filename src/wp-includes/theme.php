@@ -874,9 +874,9 @@ function switch_theme( $stylesheet ) {
 	$wp_template_path   = null;
 
 	// Clear pattern caches.
-	$option_name = 'wp_theme_patterns_' . $old_theme->get_stylesheet();
 	if( ! is_multisite() ){
-		delete_site_option( $option_name );
+		$processor = new WP_Block_Patterns_Processor( $old_theme );
+		$processor->delete_cache();
 	}
 
 	/**
