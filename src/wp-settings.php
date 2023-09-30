@@ -324,6 +324,7 @@ require ABSPATH . WPINC . '/class-wp-block-editor-context.php';
 require ABSPATH . WPINC . '/class-wp-block-type.php';
 require ABSPATH . WPINC . '/class-wp-block-pattern-categories-registry.php';
 require ABSPATH . WPINC . '/class-wp-block-patterns-registry.php';
+require ABSPATH . WPINC . '/class-wp-block-patterns-processor.php';
 require ABSPATH . WPINC . '/class-wp-block-styles-registry.php';
 require ABSPATH . WPINC . '/class-wp-block-type-registry.php';
 require ABSPATH . WPINC . '/class-wp-block.php';
