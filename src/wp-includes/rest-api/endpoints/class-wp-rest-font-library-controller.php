@@ -137,20 +137,20 @@ class WP_REST_Font_Library_Controller extends WP_REST_Controller {
 	 *
 	 * @param array[] $font_families Font families to install.
 	 * @param array   $files         Files to install.
-	 * @return array $error_messages Array of error messages.
+	 * @return WP_Error $error WP_Error with error data.
 	 */
 	private function get_validation_errors( $font_families, $files ) {
-		$error_messages = array();
+		$error = new WP_Error();
 
 		if ( ! is_array( $font_families ) ) {
-			$error_messages[] = __( 'fontFamilies should be an array of font families.' );
-			return $error_messages;
+			$error->add( 'fontFamilies_array', __( 'fontFamilies should be an array of font families.' ) );
+			return $error;
 		}
 
 		// Checks if there is at least one font family.
 		if ( count( $font_families ) < 1 ) {
-			$error_messages[] = __( 'fontFamilies should have at least one font family definition.' );
-			return $error_messages;
+			$error->add( 'fontFamilies_empty', 'fontFamilies should have at least one font family definition.' );
+			return $error;
 		}
 
 		for ( $family_index = 0; $family_index < count( $font_families ); $family_index++ ) {
@@ -161,28 +161,37 @@ class WP_REST_Font_Library_Controller extends WP_REST_Controller {
 				! isset( $font_family['name'] ) ||
 				! isset( $font_family['fontFamily'] )
 			) {
-				$error_messages[] = sprintf(
+				$error->add(
+					'font_slug_error',
+					sprintf(
 					// translators: 1: font family index.
-					__( 'Font family [%s] should have slug, name and fontFamily properties defined.' ),
-					$family_index
+						__( 'Font family [%s] should have slug, name and fontFamily properties defined.' ),
+						$family_index
+					)
 				);
 			}
 
 			if ( isset( $font_family['fontFace'] ) ) {
 				if ( ! is_array( $font_family['fontFace'] ) ) {
-					$error_messages[] = sprintf(
+					$error->add(
+						'font_property_error',
+						sprintf(
 						// translators: 1: font family index.
-						__( 'Font family [%s] should have fontFace property defined as an array.' ),
-						$family_index
+							__( 'Font family [%s] should have fontFace property defined as an array.' ),
+							$family_index
+						)
 					);
 					continue;
 				}
 
 				if ( count( $font_family['fontFace'] ) < 1 ) {
-					$error_messages[] = sprintf(
+					$error->add(
+						'font_define_error',
+						sprintf(
 						// translators: 1: font family index.
-						__( 'Font family [%s] should have at least one font face definition.' ),
-						$family_index
+							__( 'Font family [%s] should have at least one font face definition.' ),
+							$family_index
+						)
 					);
 				}
 
@@ -191,30 +200,39 @@ class WP_REST_Font_Library_Controller extends WP_REST_Controller {
 
 						$font_face = $font_family['fontFace'][ $face_index ];
 						if ( ! isset( $font_face['fontWeight'] ) || ! isset( $font_face['fontStyle'] ) ) {
-							$error_messages[] = sprintf(
+							$error->add(
+								'font_style_error',
+								sprintf(
 								// translators: 1: font family index, 2: font face index.
-								__( 'Font family [%1$s] Font face [%2$s] should have fontWeight and fontStyle properties defined.' ),
-								$family_index,
-								$face_index
+									__( 'Font family [%1$s] Font face [%2$s] should have fontWeight and fontStyle properties defined.' ),
+									$family_index,
+									$face_index
+								)
 							);
 						}
 
 						if ( isset( $font_face['downloadFromUrl'] ) && isset( $font_face['uploadedFile'] ) ) {
-							$error_messages[] = sprintf(
+							$error->add(
+								'font__donwload_error',
+								sprintf(
 								// translators: 1: font family index, 2: font face index.
-								__( 'Font family [%1$s] Font face [%2$s] should have only one of the downloadFromUrl or uploadedFile properties defined and not both.' ),
-								$family_index,
-								$face_index
+									__( 'Font family [%1$s] Font face [%2$s] should have only one of the downloadFromUrl or uploadedFile properties defined and not both.' ),
+									$family_index,
+									$face_index
+								)
 							);
 						}
 
 						if ( isset( $font_face['uploadedFile'] ) ) {
 							if ( ! isset( $files[ $font_face['uploadedFile'] ] ) ) {
-								$error_messages[] = sprintf(
+								$error->add(
+									'font_face_error',
+									sprintf(
 									// translators: 1: font family index, 2: font face index.
-									__( 'Font family [%1$s] Font face [%2$s] file is not defined in the request files.' ),
-									$family_index,
-									$face_index
+										__( 'Font family [%1$s] Font face [%2$s] file is not defined in the request files.' ),
+										$family_index,
+										$face_index
+									)
 								);
 							}
 						}
@@ -223,7 +241,7 @@ class WP_REST_Font_Library_Controller extends WP_REST_Controller {
 			}
 		}
 
-		return $error_messages;
+		return $error;
 	}
 
 	/**
@@ -238,13 +256,15 @@ class WP_REST_Font_Library_Controller extends WP_REST_Controller {
 	public function validate_install_font_families( $param, $request ) {
 		$font_families  = json_decode( $param, true );
 		$files          = $request->get_file_params();
-		$error_messages = $this->get_validation_errors( $font_families, $files );
+		$error          = $this->get_validation_errors( $font_families, $files );
 
-		if ( empty( $error_messages ) ) {
+		if ( ! $error->has_errors() ) {
 			return true;
 		}
 
-		return new WP_Error( 'rest_invalid_param', implode( ', ', $error_messages ), array( 'status' => 400 ) );
+		$error->add_data( array( 'status' => 400 ) );
+
+		return $error;
 	}
 
 	/**
