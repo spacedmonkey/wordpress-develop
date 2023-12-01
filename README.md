@@ -5,11 +5,11 @@ Welcome to the WordPress development repository! Please check out the [contribut
 * [Getting Started](#getting-started)
 * [Credentials](#credentials)
 
-## Getting Started
+## Getting Started!!
 
 ### Using GitHub Codespaces
 
-To get started, create a codespace for this repository by clicking this 👇 
+To get started, create a codespace for this repository by clicking this 👇
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=trunk&repo=75645659)
 
