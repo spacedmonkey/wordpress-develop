@@ -54,6 +54,25 @@ class Tests_Query_Stickies extends WP_UnitTestCase {
 		$this->assertSame( self::$posts[14], $q->posts[2]->ID );
 	}
 
+	public function test_stickies_should_be_included_when_is_home_is_true_post_type() {
+		$filter = new MockAction();
+		add_filter( 'posts_pre_query', array( $filter, 'filter' ), 10, 2 );
+		$this->go_to( '/' );
+
+		$q = $GLOBALS['wp_query'];
+
+		$this->assertSame( self::$posts[2], $q->posts[0]->ID );
+		$this->assertSame( self::$posts[8], $q->posts[1]->ID );
+		$this->assertSame( self::$posts[14], $q->posts[2]->ID );
+
+		$filter_args       = $filter->get_args();
+		$query_vars        = $filter_args[0][1]->query_vars;
+		$sticky_query_vars = $filter_args[1][1]->query_vars;
+
+		$this->assertSame( '', $query_vars['post_type'] );
+		$this->assertSame( 'post', $sticky_query_vars['post_type'] );
+	}
+
 	public function test_stickies_should_not_be_included_on_pages_other_than_1() {
 		$this->go_to( '/?paged=2' );
 
