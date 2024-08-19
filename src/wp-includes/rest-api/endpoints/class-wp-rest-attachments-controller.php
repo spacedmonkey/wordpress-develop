@@ -47,7 +47,7 @@ class WP_REST_Attachments_Controller extends WP_REST_Posts_Controller {
 					),
 					'action' => array(
 						'type'     => 'string',
-						'enum'     => array( 'create-image-subsizes' ),
+						'enum'     => array( 'create-image-subsizes', 'generate-poster' ),
 						'required' => true,
 					),
 				),
@@ -462,11 +462,74 @@ class WP_REST_Attachments_Controller extends WP_REST_Posts_Controller {
 				require_once ABSPATH . 'wp-admin/includes/image.php';
 				wp_update_image_subsizes( $request['id'] );
 				break;
+			case 'generate-poster':
+				$result = $this->get_poster_image( $request['id'] );
+				if( is_wp_error( $result ) ) {
+					return $result;
+				}
+				break;
 		}
 
 		$request['context'] = 'edit';
 
 		return $this->prepare_item_for_response( get_post( $request['id'] ), $request );
+	}
+
+
+	protected function get_poster_image( $attachment_id ) {
+		if ( ! wp_attachment_is( 'video', $attachment_id ) ) {
+			return new WP_Error('invalid_types', __('Video is not supported on this server.'), array( 'status' => 400 ) );
+		}
+
+		if ( ! wp_image_editor_supports( array( 'mime_type' => get_post_mime_type( $attachment_id ) ) ) ) {
+			return new WP_Error('invalid_support', __('Video is not supported on this server.'), array( 'status' => 400 ) );
+		}
+
+		$file = get_attached_file( $attachment_id );
+		$current_filename = basename( $file );
+
+		$editor = wp_get_image_editor( $file );
+
+		if ( is_wp_error( $editor ) ) {
+			// This image cannot be edited.
+			return $editor;
+		}
+
+		$name = pathinfo($file, PATHINFO_FILENAME);
+		$filename = $name.".jpg";
+
+		// Create the uploads subdirectory if needed.
+		$uploads = wp_upload_dir();
+
+		// Make the file name unique in the (new) upload directory.
+		$filename = wp_unique_filename( $uploads['path'], $filename );
+
+		// Save to disk.
+		$saved = $editor->save( $uploads['path'] . "/$filename" );
+
+		if ( is_wp_error( $saved ) ) {
+			return $saved;
+		}
+
+		$id = wp_insert_attachment(
+			array(
+				'file' => $saved['path'],
+				'post_parent' => $attachment_id,
+				'post_mime_type' => $saved['mime-type'],
+				'post_title' => $saved['file'],
+				'guid'           => $uploads['url'] . "/$filename",
+			)
+		);
+		if ( is_wp_error( $id ) ) {
+			return $id;
+		}
+		// Include media and image functions to get access to wp_generate_attachment_metadata().
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		wp_update_attachment_metadata( $id, wp_generate_attachment_metadata( $id, $saved['path'] ));
+		set_post_thumbnail($attachment_id, $id);
+
+		return true;
 	}
 
 	/**
