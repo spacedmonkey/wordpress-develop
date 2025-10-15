@@ -104,13 +104,13 @@ class WP_User {
 	 * @since 4.9.0
 	 * @var int
 	 */
-	private $site_id = 0;
+	protected $site_id = 0;
 
 	/**
 	 * @since 3.3.0
 	 * @var array
 	 */
-	private static $back_compat_keys;
+	protected static $back_compat_keys;
 
 	/**
 	 * Constructor.
@@ -446,7 +446,7 @@ class WP_User {
 	}
 
 	/**
-	 * Makes private/protected methods readable for backward compatibility.
+	 * Makes protected/protected methods readable for backward compatibility.
 	 *
 	 * @since 4.3.0
 	 *
@@ -902,7 +902,7 @@ class WP_User {
 	 * @return bool[] List of capabilities keyed by the capability name,
 	 *                e.g. `array( 'edit_posts' => true, 'delete_posts' => false )`.
 	 */
-	private function get_caps_data() {
+	protected function get_caps_data() {
 		$caps = get_user_meta( $this->ID, $this->cap_key, true );
 
 		if ( ! is_array( $caps ) ) {

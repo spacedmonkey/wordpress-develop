@@ -4887,7 +4887,13 @@ class WP_Query {
 
 		$id = (int) $post->ID;
 
-		$authordata = get_userdata( $post->post_author );
+        $userdata = WP_Author::get_data_by( 'id', $post->post_author );
+        $authordata = false;
+
+        if ( $userdata ) {
+            $authordata = new WP_Author( $userdata );;
+            $authordata->init( $userdata );
+        }
 
 		$currentday   = false;
 		$currentmonth = false;
