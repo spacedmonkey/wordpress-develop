@@ -984,6 +984,162 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 	}
 
 	/**
+	 * Validates that the `domain` parameter is a valid hostname or IP address.
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param mixed           $value   Value of the `domain` parameter.
+	 * @param WP_REST_Request $request The current request.
+	 * @param string          $param   The parameter name.
+	 * @return true|WP_Error True if the value is valid, otherwise a WP_Error object.
+	 */
+	public function validate_domain( $value, $request, $param ) {
+		$valid = rest_validate_request_arg( $value, $request, $param );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		if ( $this->is_valid_domain( $value ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'rest_invalid_param',
+			__( 'domain must be a valid hostname or IP address (IPv4 or IPv6), optionally followed by a port. Bracketed IPv6 addresses are not supported.' ),
+			array(
+				'status' => 400,
+				'param'  => $param,
+			)
+		);
+	}
+
+	/**
+	 * Checks whether a string is a valid domain: a hostname or bare IP address
+	 * (IPv4 or IPv6, unbracketed), optionally followed by a port number.
+	 * Brackets are not supported, so an IPv6 address can't carry a port.
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param string $domain The domain to check.
+	 * @return bool True if `$domain` is a valid domain, otherwise false.
+	 */
+	private function is_valid_domain( $domain ) {
+		if ( ! is_string( $domain ) || '' === $domain ) {
+			return false;
+		}
+
+		// Bare IPv4 or IPv6 address, no port.
+		if ( $this->is_ip_address_candidate( $domain ) && rest_is_ip_address( $domain ) ) {
+			return true;
+		}
+
+		// hostname[:port] or ipv4[:port]. A second colon means this isn't a
+		// single port suffix but an (invalid, since it failed the check above)
+		// unbracketed IPv6 address, so only split off a port when there's exactly one colon.
+		$host = $domain;
+		$port = null;
+
+		if ( 1 === substr_count( $domain, ':' ) ) {
+			$colon_pos = strpos( $domain, ':' );
+			$host      = substr( $domain, 0, $colon_pos );
+			$port      = substr( $domain, $colon_pos + 1 );
+		}
+
+		if ( null !== $port && ! $this->is_valid_port( $port ) ) {
+			return false;
+		}
+
+		if ( $this->is_ip_address_candidate( $host ) && rest_is_ip_address( $host ) ) {
+			return true;
+		}
+
+		return 1 === preg_match(
+			'/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/',
+			$host
+		) && strlen( $host ) <= 253;
+	}
+
+	/**
+	 * Checks whether a string is a valid TCP/UDP port number (1-65535).
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param string $port The port to check.
+	 * @return bool True if `$port` is a valid port number, otherwise false.
+	 */
+	private function is_valid_port( $port ) {
+		return 1 === preg_match( '/^[0-9]{1,5}$/', $port ) && (int) $port >= 1 && (int) $port <= 65535;
+	}
+
+	/**
+	 * Checks whether a string is made up only of characters that can appear
+	 * in an IPv4 or IPv6 (including IPv4-mapped) address, i.e. it's safe to
+	 * pass to rest_is_ip_address(). That underlying check parses its input
+	 * as hexadecimal, and PHP emits a warning for any other character, so
+	 * this keeps arbitrary domain input from tripping that on the way in.
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param string $value The value to check.
+	 * @return bool True if `$value` only contains valid IP address characters, otherwise false.
+	 */
+	private function is_ip_address_candidate( $value ) {
+		return 1 === preg_match( '/^[0-9A-Fa-f:.]+$/', $value );
+	}
+
+	/**
+	 * Validates that the `path` parameter is a valid site path.
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param mixed           $value   Value of the `path` parameter.
+	 * @param WP_REST_Request $request The current request.
+	 * @param string          $param   The parameter name.
+	 * @return true|WP_Error True if the value is valid, otherwise a WP_Error object.
+	 */
+	public function validate_path( $value, $request, $param ) {
+		$valid = rest_validate_request_arg( $value, $request, $param );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		if ( $this->is_valid_path( $value ) ) {
+			return true;
+		}
+
+		return new WP_Error(
+			'rest_invalid_param',
+			__( 'path must be a valid site path, starting and ending with a forward slash.' ),
+			array(
+				'status' => 400,
+				'param'  => $param,
+			)
+		);
+	}
+
+	/**
+	 * Checks whether a string is a valid site path: a forward slash, or a
+	 * sequence of `/`-delimited segments each starting and ending with a
+	 * forward slash, made up of characters allowed in a URL path segment
+	 * (RFC 3986 `pchar`).
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param string $path The path to check.
+	 * @return bool True if `$path` is a valid site path, otherwise false.
+	 */
+	private function is_valid_path( $path ) {
+		if ( ! is_string( $path ) || '' === $path ) {
+			return false;
+		}
+
+		return 1 === preg_match(
+			'#^/(?:(?:[A-Za-z0-9._~!$&\'()*+,;=:@-]|%[0-9A-Fa-f]{2})+/)*$#',
+			$path
+		);
+	}
+
+	/**
 	 * Retrieves the site's schema, conforming to JSON Schema.
 	 *
 	 * @since 7.2.0
@@ -1016,12 +1172,18 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit', 'embed' ),
 					'default'     => '',
+					'arg_options' => array(
+						'validate_callback' => array( $this, 'validate_domain' ),
+					),
 				),
 				'path'             => array(
 					'description' => __( 'Site path.' ),
 					'type'        => 'string',
 					'context'     => array( 'view', 'edit', 'embed' ),
 					'default'     => '/',
+					'arg_options' => array(
+						'validate_callback' => array( $this, 'validate_path' ),
+					),
 				),
 				'registered'       => array(
 					'description' => __( 'When the site was registered, in the site\'s timezone.' ),
