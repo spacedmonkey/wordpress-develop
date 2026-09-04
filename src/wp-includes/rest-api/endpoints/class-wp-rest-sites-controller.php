@@ -503,8 +503,6 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return new WP_Error( 'rest_site_failed_create', __( 'Creating site failed.' ), array( 'status' => 500 ) );
 		}
 
-		wp_cache_set_sites_last_changed();
-
 		$site = get_site( $site_id );
 
 		/**
