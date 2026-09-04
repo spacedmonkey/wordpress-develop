@@ -185,6 +185,128 @@ class WP_Test_REST_Sites_Controller extends WP_Test_REST_Controller_Testcase {
 
 	/**
 	 * @ticket 40365
+	 * @covers ::create_item
+	 * @group ms-required
+	 */
+	public function test_create_item_rejects_an_existing_domain_and_path() {
+		wp_set_current_user( self::$superadmin_id );
+
+		self::factory()->blog->create(
+			array(
+				'domain' => WP_TESTS_DOMAIN,
+				'path'   => '/existing/',
+			)
+		);
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/sites' );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/existing/' );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_site_taken', $response, 400 );
+	}
+
+	/**
+	 * @ticket 40365
+	 * @covers ::create_item
+	 * @group ms-required
+	 */
+	public function test_create_item_allows_an_existing_domain_and_path_on_a_different_network() {
+		wp_set_current_user( self::$superadmin_id );
+
+		self::factory()->blog->create(
+			array(
+				'domain' => WP_TESTS_DOMAIN,
+				'path'   => '/shared/',
+			)
+		);
+
+		$network_id = self::factory()->network->create(
+			array(
+				'domain' => 'other-network.example.org',
+				'path'   => '/',
+			)
+		);
+
+		$request = new WP_REST_Request( 'POST', '/wp/v2/sites' );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/shared/' );
+		$request->set_param( 'network', $network_id );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 201, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertEquals( WP_TESTS_DOMAIN, $data['domain'] );
+		$this->assertEquals( '/shared/', $data['path'] );
+		$this->assertEquals( $network_id, $data['network'] );
+	}
+
+	/**
+	 * @ticket 40365
+	 * @covers ::update_item
+	 * @group ms-required
+	 */
+	public function test_update_item_rejects_another_sites_domain_and_path() {
+		wp_set_current_user( self::$superadmin_id );
+
+		self::factory()->blog->create(
+			array(
+				'domain' => WP_TESTS_DOMAIN,
+				'path'   => '/taken/',
+			)
+		);
+		$blog_id = self::factory()->blog->create(
+			array(
+				'domain' => WP_TESTS_DOMAIN,
+				'path'   => '/free/',
+			)
+		);
+
+		$request = new WP_REST_Request( 'PUT', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/taken/' );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertErrorResponse( 'rest_site_taken', $response, 400 );
+	}
+
+	/**
+	 * @ticket 40365
+	 * @covers ::update_item
+	 * @group ms-required
+	 */
+	public function test_update_item_allows_a_site_to_keep_its_own_domain_and_path() {
+		wp_set_current_user( self::$superadmin_id );
+
+		$blog_id = self::factory()->blog->create(
+			array(
+				'domain' => WP_TESTS_DOMAIN,
+				'path'   => '/keep/',
+			)
+		);
+
+		$request = new WP_REST_Request( 'PUT', '/wp/v2/sites/' . $blog_id );
+		$request->set_param( 'domain', WP_TESTS_DOMAIN );
+		$request->set_param( 'path', '/keep/' );
+		$request->set_param( 'mature', 1 );
+
+		$response = rest_get_server()->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+
+		$data = $response->get_data();
+
+		$this->assertEquals( '/keep/', $data['path'] );
+		$this->assertEquals( 1, $data['mature'] );
+	}
+
+	/**
+	 * @ticket 40365
 	 * @covers ::update_item
 	 * @group ms-required
 	 */

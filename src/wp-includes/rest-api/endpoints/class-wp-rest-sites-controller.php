@@ -503,6 +503,8 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			return new WP_Error( 'rest_site_failed_create', __( 'Creating site failed.' ), array( 'status' => 500 ) );
 		}
 
+		wp_cache_set_sites_last_changed();
+
 		$site = get_site( $site_id );
 
 		/**
@@ -970,6 +972,11 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 			$prepared_site['domain'] = $request['domain'];
 		}
 
+		$domain_check = $this->check_domain_is_available( $prepared_site, $request );
+		if ( is_wp_error( $domain_check ) ) {
+			return $domain_check;
+		}
+
 		/**
 		 * Filters a site after it is prepared for the database.
 		 *
@@ -981,6 +988,53 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 		 * @param WP_REST_Request $request       The current request.
 		 */
 		return apply_filters( 'rest_preprocess_site', $prepared_site, $request );
+	}
+
+	/**
+	 * Checks that the domain and path for a prepared site are not already in use.
+	 *
+	 * When creating a site, the domain and path must not belong to any existing
+	 * site. When updating a site, they may only belong to the site being updated.
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param array           $prepared_site The prepared site data for `wp_insert_site()`.
+	 * @param WP_REST_Request $request       The current request.
+	 * @return true|WP_Error True if the domain and path are available, WP_Error otherwise.
+	 */
+	protected function check_domain_is_available( $prepared_site, $request ) {
+		$id         = (int) $request['id'];
+		$domain     = isset( $prepared_site['domain'] ) ? $prepared_site['domain'] : '';
+		$path       = isset( $prepared_site['path'] ) ? $prepared_site['path'] : '/';
+		$network_id = isset( $prepared_site['network_id'] ) ? $prepared_site['network_id'] : get_current_network_id();
+
+		if ( ! empty( $id ) ) {
+			// Updating a site: fall back to the current values for anything the request left out.
+			$current_site = $this->get_site( $id );
+
+			if ( is_wp_error( $current_site ) ) {
+				return $current_site;
+			}
+
+			if ( ! isset( $prepared_site['domain'] ) ) {
+				$domain = $current_site->domain;
+			}
+			if ( ! isset( $prepared_site['path'] ) ) {
+				$path = $current_site->path;
+			}
+			if ( ! isset( $prepared_site['network_id'] ) ) {
+				$network_id = (int) $current_site->network_id;
+			}
+		}
+
+		$existing_site_id = domain_exists( $domain, $path, $network_id );
+
+		// The domain and path may only belong to the site being updated.
+		if ( $existing_site_id && (int) $existing_site_id !== $id ) {
+			return new WP_Error( 'rest_site_taken', __( 'Sorry, that site already exists!' ), array( 'status' => 400 ) );
+		}
+
+		return true;
 	}
 
 	/**
@@ -1010,6 +1064,7 @@ class WP_REST_Sites_Controller extends WP_REST_Controller {
 					'description' => __( 'The site\'s network ID. Default is the current network ID.' ),
 					'type'        => 'integer',
 					'context'     => array( 'view', 'edit', 'embed' ),
+					'default'     => get_current_network_id(),
 				),
 				'domain'           => array(
 					'description' => __( 'Site domain.' ),
