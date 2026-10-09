@@ -2146,6 +2146,47 @@ function wp_prime_user_capabilities_cache( array $user_ids ) {
 }
 
 /**
+ * Warms the user capabilities cache from freshly loaded user meta.
+ *
+ * Hooked to the {@see 'updated_user_meta_cache'} action, so that once a user's
+ * meta has been loaded in full, their capabilities can later be read without
+ * loading all of their meta again.
+ *
+ * @since 7.2.0
+ *
+ * @param array $data Raw user meta, keyed by user ID and then by meta key.
+ */
+function wp_warm_user_capabilities_cache( $data ) {
+	if ( empty( $data ) ) {
+		return;
+	}
+
+	$cache  = array();
+	$cached = wp_cache_get_multiple( array_keys( $data ), 'user_capabilities' );
+
+	foreach ( $data as $user_id => $meta ) {
+		// Skip users whose capabilities cache is already warm.
+		if ( isset( $cached[ $user_id ] ) && is_array( $cached[ $user_id ] ) ) {
+			continue;
+		}
+
+		$capabilities = array();
+
+		foreach ( (array) $meta as $meta_key => $values ) {
+			if ( _wp_is_user_capabilities_meta_key( $meta_key ) && isset( $values[0] ) ) {
+				$capabilities[ $meta_key ] = maybe_unserialize( $values[0] );
+			}
+		}
+
+		$cache[ $user_id ] = $capabilities;
+	}
+
+	if ( ! empty( $cache ) ) {
+		wp_cache_set_multiple( $cache, 'user_capabilities' );
+	}
+}
+
+/**
  * Stores capabilities meta in the user capabilities cache when it is added or updated.
  *
  * Hooked to the {@see 'added_user_meta'} and {@see 'updated_user_meta'} actions.

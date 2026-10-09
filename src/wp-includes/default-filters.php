@@ -136,6 +136,7 @@ add_action( 'deleted_user_meta', 'wp_delete_user_capabilities_cache_key', 10, 3 
 add_action( 'delete_user_meta', '_wp_clean_user_capabilities_cache_before_delete', 10, 3 );
 add_filter( 'update_user_metadata_by_mid', '_wp_clean_user_capabilities_cache_before_rename', 10, 4 );
 add_filter( 'get_user_metadata', 'wp_get_user_capabilities_metadata', 10, 4 );
+add_action( 'updated_user_meta_cache', 'wp_warm_user_capabilities_cache' );
 add_action( 'add_user_role', 'wp_cache_set_users_last_changed' );
 add_action( 'set_user_role', 'wp_cache_set_users_last_changed' );
 add_action( 'remove_user_role', 'wp_cache_set_users_last_changed' );

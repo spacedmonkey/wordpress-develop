@@ -1290,6 +1290,29 @@ function update_meta_cache( $meta_type, $object_ids ) {
 
 	wp_cache_add_multiple( $data, $cache_group );
 
+	/**
+	 * Fires after the metadata cache has been updated for objects not previously cached.
+	 *
+	 * The dynamic portion of the hook name, `$meta_type`, refers to the meta object type
+	 * (blog, post, comment, term, user, or any other type with an associated meta table).
+	 *
+	 * Possible hook names include:
+	 *
+	 *  - `updated_blog_meta_cache`
+	 *  - `updated_post_meta_cache`
+	 *  - `updated_comment_meta_cache`
+	 *  - `updated_term_meta_cache`
+	 *  - `updated_user_meta_cache`
+	 *
+	 * @since 7.2.0
+	 *
+	 * @param array  $data           Metadata loaded from the database, keyed by object ID. Each entry is an
+	 *                               array of raw meta values keyed by meta key.
+	 * @param string $meta_type      Type of object metadata is for.
+	 * @param int[]  $non_cached_ids Object IDs whose metadata was loaded from the database.
+	 */
+	do_action( "updated_{$meta_type}_meta_cache", $data, $meta_type, $non_cached_ids );
+
 	return $cache;
 }
 
