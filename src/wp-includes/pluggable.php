@@ -132,6 +132,7 @@ if ( ! function_exists( 'cache_users' ) ) :
 		global $wpdb;
 
 		update_meta_cache( 'user', $user_ids );
+		wp_prime_user_capabilities_cache( $user_ids );
 
 		$clean = _get_non_cached_ids( $user_ids, 'users' );
 
