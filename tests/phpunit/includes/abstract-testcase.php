@@ -503,6 +503,7 @@ abstract class WP_UnitTestCase_Base extends PHPUnit_Adapter_TestCase {
 				'users',
 				'user-queries',
 				'user_meta',
+				'user_capabilities',
 				'useremail',
 				'userlogins',
 				'userslugs',

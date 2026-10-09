@@ -2081,6 +2081,7 @@ function clean_user_cache( $user ) {
 	}
 
 	wp_cache_delete( $user->ID, 'user_meta' );
+	wp_cache_delete( $user->ID, 'user_capabilities' );
 	wp_cache_set_users_last_changed();
 
 	/**
@@ -2092,6 +2093,208 @@ function clean_user_cache( $user ) {
 	 * @param WP_User $user    User object.
 	 */
 	do_action( 'clean_user_cache', $user->ID, $user );
+}
+
+/**
+ * Determines whether a user meta key holds the capabilities for a site.
+ *
+ * Matches the capabilities key of every site in the network, for example
+ * `wp_capabilities` for the main site and `wp_2_capabilities` for site 2.
+ *
+ * @since 7.2.0
+ * @access private
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
+ *
+ * @param string $meta_key User meta key.
+ * @return bool Whether the meta key is a capabilities key.
+ */
+function _wp_is_user_capabilities_meta_key( $meta_key ) {
+	global $wpdb;
+
+	if ( ! is_string( $meta_key ) || '' === $meta_key ) {
+		return false;
+	}
+
+	return (bool) preg_match( '/^' . preg_quote( $wpdb->base_prefix, '/' ) . '(\d+_)?capabilities$/', $meta_key );
+}
+
+/**
+ * Primes the user capabilities cache for the given users.
+ *
+ * Loads the users' 'user_capabilities' cache entries in a single request, so
+ * that later reads of their capabilities meta are served from memory.
+ *
+ * The 'user_capabilities' cache group stores, per user ID, an array of every
+ * site's capabilities meta, keyed by meta key, for example:
+ *
+ *     array(
+ *         'wp_capabilities'   => array( 'administrator' => true ),
+ *         'wp_2_capabilities' => array( 'editor' => true ),
+ *     )
+ *
+ * Only capabilities keys that use the current `$wpdb->base_prefix` are stored, so
+ * installs sharing a user meta table with a different base prefix should not
+ * share an object cache.
+ *
+ * @since 7.2.0
+ *
+ * @param int[] $user_ids User IDs.
+ */
+function wp_prime_user_capabilities_cache( array $user_ids ) {
+	wp_cache_get_multiple( $user_ids, 'user_capabilities' );
+}
+
+/**
+ * Stores capabilities meta in the user capabilities cache when it is added or updated.
+ *
+ * Hooked to the {@see 'added_user_meta'} and {@see 'updated_user_meta'} actions.
+ *
+ * @since 7.2.0
+ *
+ * @param int    $meta_id    Meta ID.
+ * @param int    $user_id    User ID.
+ * @param string $meta_key   Meta key.
+ * @param mixed  $meta_value Meta value.
+ */
+function wp_update_user_capabilities_cache( $meta_id, $user_id, $meta_key, $meta_value ) {
+	if ( ! _wp_is_user_capabilities_meta_key( $meta_key ) ) {
+		return;
+	}
+
+	$capabilities = wp_cache_get( $user_id, 'user_capabilities' );
+
+	if ( ! is_array( $capabilities ) ) {
+		$capabilities = array();
+	}
+
+	// Store the value as it would be read back from the database.
+	$capabilities[ $meta_key ] = maybe_unserialize( (string) maybe_serialize( $meta_value ) );
+
+	wp_cache_set( $user_id, $capabilities, 'user_capabilities' );
+}
+
+/**
+ * Removes capabilities meta from the user capabilities cache when it is deleted.
+ *
+ * Hooked to the {@see 'deleted_user_meta'} action.
+ *
+ * @since 7.2.0
+ *
+ * @param string[] $meta_ids Deleted meta IDs.
+ * @param int      $user_id  User ID.
+ * @param string   $meta_key Meta key.
+ */
+function wp_delete_user_capabilities_cache_key( $meta_ids, $user_id, $meta_key ) {
+	if ( ! $user_id || ! _wp_is_user_capabilities_meta_key( $meta_key ) ) {
+		return;
+	}
+
+	$capabilities = wp_cache_get( $user_id, 'user_capabilities' );
+
+	if ( ! is_array( $capabilities ) || ! array_key_exists( $meta_key, $capabilities ) ) {
+		return;
+	}
+
+	unset( $capabilities[ $meta_key ] );
+
+	wp_cache_set( $user_id, $capabilities, 'user_capabilities' );
+}
+
+/**
+ * Cleans the capabilities cache of users affected by a capabilities meta deletion.
+ *
+ * When metadata is deleted for all users, {@see 'deleted_user_meta'} does not
+ * receive the affected user IDs, so they are looked up before the deletion.
+ *
+ * @since 7.2.0
+ * @access private
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
+ *
+ * @param string[] $meta_ids Meta IDs to delete.
+ * @param int      $user_id  User ID.
+ * @param string   $meta_key Meta key.
+ */
+function _wp_clean_user_capabilities_cache_before_delete( $meta_ids, $user_id, $meta_key ) {
+	global $wpdb;
+
+	if ( empty( $meta_ids ) || ! _wp_is_user_capabilities_meta_key( $meta_key ) ) {
+		return;
+	}
+
+	$meta_ids = implode( ',', array_map( 'intval', (array) $meta_ids ) );
+	$user_ids = $wpdb->get_col( "SELECT DISTINCT user_id FROM $wpdb->usermeta WHERE umeta_id IN ( $meta_ids )" );
+
+	// The user's own key is removed by wp_delete_user_capabilities_cache_key().
+	$user_ids = array_diff( array_map( 'intval', $user_ids ), array( (int) $user_id ) );
+
+	if ( ! empty( $user_ids ) ) {
+		wp_cache_delete_multiple( $user_ids, 'user_capabilities' );
+	}
+}
+
+/**
+ * Cleans the capabilities cache of a user whose capabilities meta key is renamed by meta ID.
+ *
+ * {@see 'updated_user_meta'} only receives the new meta key, so a renamed
+ * capabilities key is detected before the update.
+ *
+ * @since 7.2.0
+ * @access private
+ *
+ * @param null|bool    $check      Whether to allow updating metadata. Returned unchanged.
+ * @param int          $meta_id    Meta ID.
+ * @param mixed        $meta_value Meta value.
+ * @param string|false $meta_key   New meta key, or false if not changing the key.
+ * @return null|bool The unchanged `$check` value.
+ */
+function _wp_clean_user_capabilities_cache_before_rename( $check, $meta_id, $meta_value, $meta_key ) {
+	if ( null !== $check || false === $meta_key ) {
+		return $check;
+	}
+
+	$meta = get_metadata_by_mid( 'user', $meta_id );
+
+	if ( $meta && $meta->meta_key !== $meta_key && _wp_is_user_capabilities_meta_key( $meta->meta_key ) ) {
+		wp_cache_delete( (int) $meta->user_id, 'user_capabilities' );
+	}
+
+	return $check;
+}
+
+/**
+ * Serves capabilities user meta from the user capabilities cache.
+ *
+ * Hooked to the {@see 'get_user_metadata'} filter, so that reading a user's
+ * capabilities does not require loading all of their meta. When the user's
+ * entry, or the key, is not cached, metadata is retrieved as normal.
+ *
+ * @since 7.2.0
+ *
+ * @param mixed  $value    The value to return, or null to continue retrieving metadata.
+ * @param int    $user_id  User ID.
+ * @param string $meta_key Meta key.
+ * @param bool   $single   Whether to return only the first value.
+ * @return mixed The capabilities meta wrapped in an array, or the unchanged `$value`.
+ */
+function wp_get_user_capabilities_metadata( $value, $user_id, $meta_key, $single ) {
+	if ( null !== $value || ! _wp_is_user_capabilities_meta_key( $meta_key ) ) {
+		return $value;
+	}
+
+	$capabilities = wp_cache_get( $user_id, 'user_capabilities' );
+
+	// Entries can be partial, so keys missing from it are retrieved as normal.
+	if ( ! is_array( $capabilities ) || ! array_key_exists( $meta_key, $capabilities ) ) {
+		return $value;
+	}
+
+	/*
+	 * Always wrap the value: get_metadata_raw() returns `$check[0]` when `$single`
+	 * is true, and the array itself otherwise.
+	 */
+	return array( $capabilities[ $meta_key ] );
 }
 
 /**
