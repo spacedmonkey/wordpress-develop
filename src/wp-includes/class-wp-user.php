@@ -903,12 +903,13 @@ class WP_User {
 	 * Gets the available user capabilities data.
 	 *
 	 * @since 4.9.0
+	 * @since 7.2.0 Capabilities are read from the user capabilities cache, without loading all user meta.
 	 *
 	 * @return bool[] List of capabilities keyed by the capability name,
 	 *                e.g. `array( 'edit_posts' => true, 'delete_posts' => false )`.
 	 */
 	private function get_caps_data() {
-		$caps = get_user_meta( $this->ID, $this->cap_key, true );
+		$caps = _wp_get_user_capabilities_meta( $this->ID, $this->cap_key );
 
 		if ( ! is_array( $caps ) ) {
 			return array();

@@ -1220,7 +1220,7 @@ function is_user_member_of_blog( $user_id = 0, $blog_id = 0 ) {
 		$capabilities_key = $wpdb->base_prefix . $blog_id . '_capabilities';
 	}
 
-	$has_cap   = get_user_meta( $user_id, $capabilities_key, true );
+	$has_cap   = _wp_get_user_capabilities_meta( $user_id, $capabilities_key );
 	$is_member = is_array( $has_cap );
 
 	/**
@@ -1355,6 +1355,194 @@ function get_user_meta( $user_id, $key = '', $single = false ) {
  */
 function update_user_meta( $user_id, $meta_key, $meta_value, $prev_value = '' ) {
 	return update_metadata( 'user', $user_id, $meta_key, $meta_value, $prev_value );
+}
+
+/**
+ * Queues user meta for lazy-loading.
+ *
+ * @since 7.2.0
+ *
+ * @param int[] $user_ids List of user IDs.
+ */
+function wp_lazyload_user_meta( array $user_ids ) {
+	if ( empty( $user_ids ) ) {
+		return;
+	}
+
+	$lazyloader = wp_metadata_lazyloader();
+	$lazyloader->queue_objects( 'user', $user_ids );
+}
+
+/**
+ * Updates the capabilities cache for the given users.
+ *
+ * Primes the `user_capabilities` cache group, which stores the capabilities of each user
+ * for every site, keyed by user ID and then by meta key. This allows WP_User objects to be
+ * set up without loading all of the user's metadata.
+ *
+ * Users whose metadata is already cached have their capabilities derived from that cache.
+ * The capabilities of all remaining users are loaded with a single database query.
+ *
+ * @since 7.2.0
+ *
+ * @global wpdb $wpdb WordPress database abstraction object.
+ *
+ * @param int[] $user_ids List of user IDs.
+ * @return int[] List of user IDs whose metadata was fully loaded or already cached.
+ */
+function update_user_capabilities_cache( array $user_ids ) {
+	global $wpdb;
+
+	$user_ids = array_values( array_unique( array_filter( array_map( 'intval', $user_ids ) ) ) );
+	if ( empty( $user_ids ) ) {
+		return array();
+	}
+
+	/** This filter is documented in wp-includes/meta.php */
+	$check = apply_filters( 'update_user_metadata_cache', null, $user_ids );
+	if ( null !== $check ) {
+		return array();
+	}
+
+	$non_cached_ids    = array();
+	$invalid_cache_ids = array();
+	$cache_values      = wp_cache_get_multiple( $user_ids, 'user_capabilities' );
+
+	foreach ( $cache_values as $id => $cached_object ) {
+		if ( false === $cached_object ) {
+			$non_cached_ids[] = $id;
+		} elseif ( ! is_array( $cached_object ) ) {
+			// A cached value that is not an array is unusable, treat it as a cache miss.
+			$non_cached_ids[]    = $id;
+			$invalid_cache_ids[] = $id;
+		}
+	}
+
+	if ( ! empty( $invalid_cache_ids ) ) {
+		wp_cache_delete_multiple( $invalid_cache_ids, 'user_capabilities' );
+	}
+
+	if ( empty( $non_cached_ids ) ) {
+		return array();
+	}
+
+	// Derive capabilities from user meta that is already cached.
+	$meta_cache = array_filter( wp_cache_get_multiple( $non_cached_ids, 'user_meta' ), 'is_array' );
+	$loaded_ids = array_keys( $meta_cache );
+
+	if ( ! empty( $meta_cache ) ) {
+		wp_cache_add_multiple( _wp_filter_user_capabilities_meta( $meta_cache ), 'user_capabilities' );
+		$non_cached_ids = array_values( array_diff( $non_cached_ids, $loaded_ids ) );
+	}
+
+	if ( empty( $non_cached_ids ) ) {
+		return $loaded_ids;
+	}
+
+	/*
+	 * When a single user is requested, load all of their metadata. It is likely to be
+	 * needed later in the request, so this avoids a second query.
+	 */
+	if ( 1 === count( $non_cached_ids ) ) {
+		update_meta_cache( 'user', $non_cached_ids );
+		return array_merge( $loaded_ids, $non_cached_ids );
+	}
+
+	$id_list   = implode( ',', $non_cached_ids );
+	$meta_list = $wpdb->get_results(
+		$wpdb->prepare(
+			"SELECT user_id, meta_key, meta_value FROM $wpdb->usermeta WHERE user_id IN ($id_list) AND meta_key LIKE %s ORDER BY umeta_id ASC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			'%' . $wpdb->esc_like( 'capabilities' )
+		),
+		ARRAY_A
+	);
+
+	$data = array_fill_keys( $non_cached_ids, array() );
+
+	foreach ( $meta_list as $meta_row ) {
+		$user_id  = (int) $meta_row['user_id'];
+		$meta_key = $meta_row['meta_key'];
+
+		// Database collations may match case-insensitively, the meta key must match exactly.
+		if ( ! _wp_is_user_capabilities_meta_key( $meta_key ) || array_key_exists( $meta_key, $data[ $user_id ] ) ) {
+			continue;
+		}
+
+		$data[ $user_id ][ $meta_key ] = maybe_unserialize( $meta_row['meta_value'] );
+	}
+
+	wp_cache_add_multiple( $data, 'user_capabilities' );
+
+	return $loaded_ids;
+}
+
+/**
+ * Retrieves a user's capabilities meta value without loading all of the user's metadata.
+ *
+ * Behaves like `get_user_meta( $user_id, $meta_key, true )`, including running the
+ * {@see 'get_user_metadata'} filter and applying registered defaults, but reads from the
+ * `user_capabilities` cache group.
+ *
+ * @since 7.2.0
+ * @access private
+ *
+ * @param int    $user_id  User ID.
+ * @param string $meta_key Capabilities meta key, for example `wp_capabilities`.
+ * @return mixed The meta value, the default value if not set, or false for an invalid user ID.
+ */
+function _wp_get_user_capabilities_meta( $user_id, $meta_key ) {
+	if ( ! is_numeric( $user_id ) ) {
+		return false;
+	}
+
+	$user_id = absint( $user_id );
+	if ( ! $user_id ) {
+		return false;
+	}
+
+	if ( ! _wp_is_user_capabilities_meta_key( $meta_key ) ) {
+		return get_user_meta( $user_id, $meta_key, true );
+	}
+
+	/** This filter is documented in wp-includes/meta.php */
+	$check = apply_filters( 'get_user_metadata', null, $user_id, $meta_key, true, 'user' );
+	if ( null !== $check ) {
+		$value = is_array( $check ) ? $check[0] : $check;
+		if ( null !== $value ) {
+			return $value;
+		}
+
+		return get_metadata_default( 'user', $user_id, $meta_key, true );
+	}
+
+	$capabilities = wp_cache_get( $user_id, 'user_capabilities' );
+
+	if ( false !== $capabilities && ! is_array( $capabilities ) ) {
+		// A cached value that is not an array is unusable, treat it as a cache miss.
+		wp_cache_delete( $user_id, 'user_capabilities' );
+		$capabilities = false;
+	}
+
+	if ( false === $capabilities ) {
+		$meta_cache = wp_cache_get( $user_id, 'user_meta' );
+
+		if ( is_array( $meta_cache ) ) {
+			$capabilities = _wp_filter_user_capabilities_meta( array( $user_id => $meta_cache ) )[ $user_id ];
+			wp_cache_add( $user_id, $capabilities, 'user_capabilities' );
+		} else {
+			// Loading all user meta also primes the capabilities cache.
+			$meta_cache   = update_meta_cache( 'user', array( $user_id ) );
+			$capabilities = isset( $meta_cache[ $user_id ] )
+				? _wp_filter_user_capabilities_meta( array( $user_id => $meta_cache[ $user_id ] ) )[ $user_id ]
+				: array();
+		}
+	}
+
+	if ( isset( $capabilities[ $meta_key ] ) ) {
+		return $capabilities[ $meta_key ];
+	}
+
+	return get_metadata_default( 'user', $user_id, $meta_key, true );
 }
 
 /**
@@ -2060,6 +2248,7 @@ function update_user_caches( $user ) {
  * @since 3.0.0
  * @since 4.4.0 'clean_user_cache' action was added.
  * @since 6.2.0 User metadata caches are now cleared.
+ * @since 7.2.0 User capabilities caches are now cleared.
  *
  * @param WP_User|int $user User object or ID to be cleaned from the cache
  */
@@ -2081,6 +2270,7 @@ function clean_user_cache( $user ) {
 	}
 
 	wp_cache_delete( $user->ID, 'user_meta' );
+	wp_cache_delete( $user->ID, 'user_capabilities' );
 	wp_cache_set_users_last_changed();
 
 	/**

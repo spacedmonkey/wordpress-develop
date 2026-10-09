@@ -464,6 +464,7 @@ Commenter avatars come from <a href="%s">Gravatar</a>.'
 			$wpdb->update( $wpdb->options, array( 'option_value' => $user->user_email ), array( 'option_name' => 'admin_email' ) );
 
 			// Remove all perms except for the login user.
+			$affected_user_ids = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT user_id FROM $wpdb->usermeta WHERE user_id != %d AND meta_key IN ( %s, %s )", $user_id, $table_prefix . 'user_level', $table_prefix . 'capabilities' ) );
 			$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->usermeta WHERE user_id != %d AND meta_key = %s", $user_id, $table_prefix . 'user_level' ) );
 			$wpdb->query( $wpdb->prepare( "DELETE FROM $wpdb->usermeta WHERE user_id != %d AND meta_key = %s", $user_id, $table_prefix . 'capabilities' ) );
 
@@ -479,6 +480,13 @@ Commenter avatars come from <a href="%s">Gravatar</a>.'
 						'meta_key' => $wpdb->base_prefix . '1_capabilities',
 					)
 				);
+				$affected_user_ids[] = $user_id;
+			}
+
+			if ( ! empty( $affected_user_ids ) ) {
+				$affected_user_ids = array_map( 'intval', $affected_user_ids );
+				wp_cache_delete_multiple( $affected_user_ids, 'user_meta' );
+				wp_cache_delete_multiple( $affected_user_ids, 'user_capabilities' );
 			}
 		}
 	}

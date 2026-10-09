@@ -123,6 +123,7 @@ if ( ! function_exists( 'cache_users' ) ) :
 	 * Retrieves info for user lists to prevent multiple queries by get_userdata().
 	 *
 	 * @since 3.0.0
+	 * @since 7.2.0 Only user capabilities are primed, other user meta is lazy-loaded.
 	 *
 	 * @global wpdb $wpdb WordPress database abstraction object.
 	 *
@@ -131,7 +132,9 @@ if ( ! function_exists( 'cache_users' ) ) :
 	function cache_users( $user_ids ) {
 		global $wpdb;
 
-		update_meta_cache( 'user', $user_ids );
+		$user_ids   = array_unique( array_map( 'intval', $user_ids ), SORT_NUMERIC );
+		$loaded_ids = update_user_capabilities_cache( $user_ids );
+		wp_lazyload_user_meta( array_diff( $user_ids, $loaded_ids ) );
 
 		$clean = _get_non_cached_ids( $user_ids, 'users' );
 

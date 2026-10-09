@@ -65,6 +65,10 @@ class WP_Metadata_Lazyloader {
 				'filter'   => 'get_blog_metadata',
 				'callback' => array( $this, 'lazyload_meta_callback' ),
 			),
+			'user'    => array(
+				'filter'   => 'get_user_metadata',
+				'callback' => array( $this, 'lazyload_meta_callback' ),
+			),
 		);
 	}
 
@@ -72,8 +76,10 @@ class WP_Metadata_Lazyloader {
 	 * Adds objects to the metadata lazy-load queue.
 	 *
 	 * @since 4.5.0
+	 * @since 7.2.0 Added support for the 'user' object type.
 	 *
-	 * @param string $object_type Type of object whose meta is to be lazy-loaded. Accepts 'term' or 'comment'.
+	 * @param string $object_type Type of object whose meta is to be lazy-loaded. Accepts 'term', 'comment',
+	 *                            'blog', or 'user'.
 	 * @param array  $object_ids  Array of object IDs.
 	 * @return void|WP_Error WP_Error on failure.
 	 */
@@ -110,7 +116,7 @@ class WP_Metadata_Lazyloader {
 	 *
 	 * @since 4.5.0
 	 *
-	 * @param string $object_type Object type. Accepts 'comment' or 'term'.
+	 * @param string $object_type Object type. Accepts 'term', 'comment', 'blog', or 'user'.
 	 * @return void|WP_Error WP_Error on failure.
 	 */
 	public function reset_queue( $object_type ) {
@@ -166,10 +172,12 @@ class WP_Metadata_Lazyloader {
 	 * is no need to invoke it directly.
 	 *
 	 * @since 6.3.0
+	 * @since 7.2.0 User capabilities, and user meta for objects that are not queued, no longer
+	 *              trigger loading of the queued user meta.
 	 *
 	 * @param mixed  $check     The `$check` param passed from the 'get_*_metadata' hook.
 	 * @param int    $object_id ID of the object metadata is for.
-	 * @param string $meta_key  Unused.
+	 * @param string $meta_key  Metadata key.
 	 * @param bool   $single    Unused.
 	 * @param string $meta_type Type of object metadata is for. Accepts 'post', 'comment', 'term', 'user',
 	 *                          or any other object type with an associated meta table.
@@ -179,6 +187,16 @@ class WP_Metadata_Lazyloader {
 	public function lazyload_meta_callback( $check, $object_id, $meta_key, $single, $meta_type ) {
 		if ( empty( $this->pending_objects[ $meta_type ] ) ) {
 			return $check;
+		}
+
+		if ( 'user' === $meta_type ) {
+			/*
+			 * Capabilities are read from their own cache, so do not load all queued user meta for them.
+			 * Meta for users that are not queued, such as the current user, is loaded on its own.
+			 */
+			if ( _wp_is_user_capabilities_meta_key( $meta_key ) || ! isset( $this->pending_objects['user'][ $object_id ] ) ) {
+				return $check;
+			}
 		}
 
 		$object_ids = array_keys( $this->pending_objects[ $meta_type ] );

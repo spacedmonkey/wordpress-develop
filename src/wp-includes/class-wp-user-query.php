@@ -884,6 +884,9 @@ class WP_User_Query {
 				$result->id = $result->ID;
 			}
 		} elseif ( 'all_with_meta' === $qv['fields'] || 'all' === $qv['fields'] ) {
+			// User meta is commonly used when listing users, so prime it rather than lazy-loading it.
+			update_meta_cache( 'user', $this->results );
+
 			if ( function_exists( 'cache_users' ) ) {
 				cache_users( $this->results );
 			}

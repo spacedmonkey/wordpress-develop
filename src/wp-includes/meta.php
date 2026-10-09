@@ -143,6 +143,9 @@ function add_metadata( $meta_type, $object_id, $meta_key, $meta_value, $unique =
 	$mid = (int) $wpdb->insert_id;
 
 	wp_cache_delete( $object_id, $meta_type . '_meta' );
+	if ( 'user' === $meta_type ) {
+		wp_cache_delete( $object_id, 'user_capabilities' );
+	}
 
 	/**
 	 * Fires immediately after meta of a specific type is added.
@@ -327,6 +330,9 @@ function update_metadata( $meta_type, $object_id, $meta_key, $meta_value, $prev_
 	}
 
 	wp_cache_delete( $object_id, $meta_type . '_meta' );
+	if ( 'user' === $meta_type ) {
+		wp_cache_delete( $object_id, 'user_capabilities' );
+	}
 
 	foreach ( $meta_ids as $meta_id ) {
 		/**
@@ -529,6 +535,9 @@ function delete_metadata( $meta_type, $object_id, $meta_key, $meta_value = '', $
 		$data = array( $object_id );
 	}
 	wp_cache_delete_multiple( $data, $meta_type . '_meta' );
+	if ( 'user' === $meta_type ) {
+		wp_cache_delete_multiple( $data, 'user_capabilities' );
+	}
 
 	/**
 	 * Fires immediately after deleting metadata of a specific type.
@@ -1025,6 +1034,9 @@ function update_metadata_by_mid( $meta_type, $meta_id, $meta_value, $meta_key = 
 
 		// Clear the caches.
 		wp_cache_delete( $object_id, $meta_type . '_meta' );
+		if ( 'user' === $meta_type ) {
+			wp_cache_delete( $object_id, 'user_capabilities' );
+		}
 
 		/** This action is documented in wp-includes/meta.php */
 		do_action( "updated_{$meta_type}_meta", $meta_id, $object_id, $meta_key, $_meta_value );
@@ -1133,6 +1145,9 @@ function delete_metadata_by_mid( $meta_type, $meta_id ) {
 
 		// Clear the caches.
 		wp_cache_delete( $object_id, $meta_type . '_meta' );
+		if ( 'user' === $meta_type ) {
+			wp_cache_delete( $object_id, 'user_capabilities' );
+		}
 
 		/** This action is documented in wp-includes/meta.php */
 		do_action( "deleted_{$meta_type}_meta", (array) $meta_id, $object_id, $meta->meta_key, $meta->meta_value );
@@ -1290,7 +1305,61 @@ function update_meta_cache( $meta_type, $object_ids ) {
 
 	wp_cache_add_multiple( $data, $cache_group );
 
+	if ( 'user' === $meta_type ) {
+		/*
+		 * Prime the user capabilities cache from the freshly loaded rows, replacing any
+		 * existing entries so that a full read from the database always wins.
+		 */
+		wp_cache_delete_multiple( $non_cached_ids, 'user_capabilities' );
+		wp_cache_add_multiple( _wp_filter_user_capabilities_meta( $data ), 'user_capabilities' );
+	}
+
 	return $cache;
+}
+
+/**
+ * Determines whether a user meta key stores capabilities.
+ *
+ * Matches the per-site `{$blog_prefix}capabilities` keys used by WP_User.
+ *
+ * @since 7.2.0
+ * @access private
+ *
+ * @param string $meta_key User meta key.
+ * @return bool Whether the meta key stores capabilities.
+ */
+function _wp_is_user_capabilities_meta_key( $meta_key ) {
+	return is_string( $meta_key ) && str_ends_with( $meta_key, 'capabilities' );
+}
+
+/**
+ * Builds user capabilities cache entries from raw user meta.
+ *
+ * @since 7.2.0
+ * @access private
+ *
+ * @param array<int, array<string, string[]>> $meta_by_id Raw user meta keyed by user ID, in the
+ *                                                        format stored in the `user_meta` cache group.
+ * @return array<int, array<string, mixed>> Capabilities keyed by user ID, then by meta key.
+ */
+function _wp_filter_user_capabilities_meta( array $meta_by_id ) {
+	$data = array();
+
+	foreach ( $meta_by_id as $user_id => $meta ) {
+		$data[ $user_id ] = array();
+
+		if ( ! is_array( $meta ) ) {
+			continue;
+		}
+
+		foreach ( $meta as $meta_key => $values ) {
+			if ( _wp_is_user_capabilities_meta_key( $meta_key ) && is_array( $values ) && isset( $values[0] ) ) {
+				$data[ $user_id ][ $meta_key ] = maybe_unserialize( $values[0] );
+			}
+		}
+	}
+
+	return $data;
 }
 
 /**

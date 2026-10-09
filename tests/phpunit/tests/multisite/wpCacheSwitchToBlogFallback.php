@@ -177,6 +177,7 @@ class Tests_Multisite_WpCacheSwitchToBlogFallback extends WP_UnitTestCase {
 		// Verify key global groups are still present.
 		$this->assert_global_group_exists( 'users' );
 		$this->assert_global_group_exists( 'user_meta' );
+		$this->assert_global_group_exists( 'user_capabilities' );
 		$this->assert_global_group_exists( 'site-options' );
 	}
 
@@ -229,6 +230,7 @@ class Tests_Multisite_WpCacheSwitchToBlogFallback extends WP_UnitTestCase {
 			'users',
 			'user-queries',
 			'user_meta',
+			'user_capabilities',
 			'useremail',
 			'userlogins',
 			'userslugs',

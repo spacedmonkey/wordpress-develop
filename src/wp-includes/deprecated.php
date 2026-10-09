@@ -2260,6 +2260,7 @@ function delete_usermeta( $user_id, $meta_key, $meta_value = '' ) {
 
 	clean_user_cache( $user_id );
 	wp_cache_delete( $user_id, 'user_meta' );
+	wp_cache_delete( $user_id, 'user_capabilities' );
 
 	if ( $cur && $cur->umeta_id )
 		do_action( 'deleted_usermeta', $cur->umeta_id, $user_id, $meta_key, $meta_value );
@@ -2370,6 +2371,7 @@ function update_usermeta( $user_id, $meta_key, $meta_value ) {
 
 	clean_user_cache( $user_id );
 	wp_cache_delete( $user_id, 'user_meta' );
+	wp_cache_delete( $user_id, 'user_capabilities' );
 
 	if ( !$cur )
 		do_action( 'added_usermeta', $wpdb->insert_id, $user_id, $meta_key, $meta_value );

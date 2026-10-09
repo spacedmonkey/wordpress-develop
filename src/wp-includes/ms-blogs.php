@@ -666,6 +666,7 @@ function wp_cache_switch_to_blog_fallback() {
 				'users',
 				'user-queries',
 				'user_meta',
+				'user_capabilities',
 				'useremail',
 				'userlogins',
 				'userslugs',
